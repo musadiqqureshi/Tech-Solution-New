@@ -54,6 +54,8 @@ export interface Order {
   paid?: boolean;
   requirementFileIds?: string[];
   deliverableFileIds?: string[];
+  deliveryLink?: string;
+  followUp?: string;
 }
 
 export interface Expert {
@@ -85,6 +87,7 @@ export interface Task {
   expertBudget?: number;
   clientBudget?: number; // admin-only (profit source)
   currency?: Currency;
+  deliveryLink?: string;
 }
 
 /** An expert option for admin task assignment. */
@@ -121,6 +124,7 @@ export interface ChatMessage {
 }
 
 export type InvoiceStatus = "unpaid" | "paid" | "void";
+export type InvoicePhase = "advance" | "final" | "full";
 
 export interface Invoice {
   $id?: string;
@@ -137,4 +141,27 @@ export interface Invoice {
   issuedDate?: string;
   dueDate?: string;
   source?: "manual" | "auto";
+  phase?: InvoicePhase;
+}
+
+export interface Review {
+  $id?: string;
+  $createdAt?: string;
+  orderId?: string;
+  clientId: string;
+  clientName: string;
+  rating: number;
+  comment?: string;
+  approved: boolean;
+}
+
+export interface AppNotification {
+  $id?: string;
+  userId: string;
+  type: string;
+  title: string;
+  body?: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
 }

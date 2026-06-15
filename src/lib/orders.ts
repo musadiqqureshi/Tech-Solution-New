@@ -54,6 +54,8 @@ function rowToOrder(r: Record<string, unknown>): Order {
     currency: (r.currency as Currency) ?? undefined,
     status: r.status as OrderStatus,
     paid: (r.paid as boolean) ?? false,
+    deliveryLink: (r.delivery_link as string) ?? undefined,
+    followUp: (r.follow_up as string) ?? undefined,
   };
 }
 
@@ -163,6 +165,30 @@ export async function updateOrder(
   const { data, error } = await supabase
     .from("orders")
     .update(fields)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToOrder(data);
+}
+
+/** Admin: set the final delivery link for the client. */
+export async function setOrderDelivery(id: string, link: string): Promise<Order> {
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ delivery_link: link || null })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToOrder(data);
+}
+
+/** Client: request a follow-up on their order (optional reference link/note). */
+export async function setOrderFollowUp(id: string, followUp: string): Promise<Order> {
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ follow_up: followUp || null, follow_up_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();

@@ -145,10 +145,13 @@ body {
     visibility: hidden;
   }
   .invoice-doc,
-  .invoice-doc * {
+  .invoice-doc *,
+  .report-doc,
+  .report-doc * {
     visibility: visible;
   }
-  .invoice-doc {
+  .invoice-doc,
+  .report-doc {
     position: absolute;
     left: 0;
     top: 0;

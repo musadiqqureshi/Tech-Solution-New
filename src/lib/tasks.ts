@@ -40,6 +40,7 @@ function rowToTask(r: Record<string, unknown>): Task {
     expertBudget: r.expert_budget != null ? Number(r.expert_budget) : undefined,
     clientBudget: r.client_budget != null ? Number(r.client_budget) : undefined,
     currency: (r.currency as Currency) ?? undefined,
+    deliveryLink: (r.delivery_link as string) ?? undefined,
   };
 }
 
@@ -124,6 +125,15 @@ export async function setMyTaskStatus(taskId: string, status: TaskStatus): Promi
   const { error } = await supabase.rpc("set_task_status", {
     p_task_id: taskId,
     p_status: status,
+  });
+  if (error) throw error;
+}
+
+/** Expert: attach a final delivery link to their own task. */
+export async function setMyTaskDelivery(taskId: string, link: string): Promise<void> {
+  const { error } = await supabase.rpc("set_task_delivery", {
+    p_task_id: taskId,
+    p_link: link,
   });
   if (error) throw error;
 }

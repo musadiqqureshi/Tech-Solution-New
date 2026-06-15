@@ -1,9 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { TESTIMONIALS } from "@/lib/constants";
+import { listApprovedReviews } from "@/lib/reviews";
 
-function Card({ t }: { t: (typeof TESTIMONIALS)[number] }) {
+type Item = { name: string; role: string; text: string; rating: number };
+
+function Card({ t }: { t: Item }) {
   return (
     <div className="glass-card p-6 w-[320px] flex-shrink-0">
       <div className="flex gap-0.5 mb-3">
@@ -26,7 +30,24 @@ function Card({ t }: { t: (typeof TESTIMONIALS)[number] }) {
 }
 
 export default function Testimonials() {
-  const loop = [...TESTIMONIALS, ...TESTIMONIALS];
+  const [items, setItems] = useState<Item[]>(TESTIMONIALS as Item[]);
+
+  useEffect(() => {
+    listApprovedReviews()
+      .then((reviews) => {
+        if (!reviews.length) return;
+        const mapped: Item[] = reviews.map((r) => ({
+          name: r.clientName,
+          role: "Verified Client",
+          text: r.comment || "Great experience working with the team!",
+          rating: r.rating,
+        }));
+        setItems([...mapped, ...(TESTIMONIALS as Item[])]);
+      })
+      .catch(() => {});
+  }, []);
+
+  const loop = [...items, ...items];
   return (
     <section id="testimonials" className="relative py-24 overflow-hidden">
       <div className="orb w-80 h-80 top-0 left-1/3 bg-aura-purple" style={{ filter: "blur(140px)", opacity: 0.1 }} />

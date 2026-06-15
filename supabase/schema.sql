@@ -157,6 +157,7 @@ create table if not exists public.tasks (
   expert_budget numeric,
   client_budget numeric,                 -- admin-only (profit source)
   currency      text check (currency in ('USD','PKR','GBP','EUR','AUD','CAD')),
+  delivery_link text,
   created_at    timestamptz not null default now()
 );
 alter table public.tasks enable row level security;
@@ -173,7 +174,7 @@ create policy "tasks_admin_all" on public.tasks
 -- (Owned by postgres → bypasses base-table RLS; the WHERE enforces ownership.)
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
-         expert_budget, currency, created_at, expert_id
+         expert_budget, currency, created_at, expert_id, delivery_link
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -302,3 +303,174 @@ begin
     alter publication supabase_realtime add table public.messages;
   end if;
 end $$;
+
+-- ── Stage 3: delivery + follow-up links ──────────────────────────────────
+alter table public.orders add column if not exists delivery_link text;
+alter table public.orders add column if not exists follow_up text;
+alter table public.orders add column if not exists follow_up_at timestamptz;
+alter table public.tasks  add column if not exists delivery_link text;
+
+-- Refresh the expert view to expose the delivery link (added at the end).
+create or replace view public.expert_tasks as
+  select id, order_id, title, description, status, deadline,
+         expert_budget, currency, created_at, expert_id, delivery_link
+  from public.tasks
+  where expert_id = auth.uid();
+grant select on public.expert_tasks to authenticated;
+
+-- Experts attach their final delivery link to their own task.
+create or replace function public.set_task_delivery(p_task_id uuid, p_link text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.tasks
+     set delivery_link = p_link
+   where id = p_task_id and expert_id = auth.uid();
+  if not found then
+    raise exception 'Task not found or not assigned to you';
+  end if;
+end;
+$$;
+grant execute on function public.set_task_delivery(uuid, text) to authenticated;
+
+-- ── Stage 3: invoice phase (30% advance / 70% final) ─────────────────────
+alter table public.invoices add column if not exists phase text not null default 'full'
+  check (phase in ('advance','final','full'));
+
+-- ── reviews ──────────────────────────────────────────────────────────────
+create table if not exists public.reviews (
+  id          uuid primary key default gen_random_uuid(),
+  order_id    uuid references public.orders(id) on delete cascade,
+  client_id   uuid not null references auth.users(id) on delete cascade,
+  client_name text not null,
+  rating      int not null check (rating between 1 and 5),
+  comment     text,
+  approved    boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+alter table public.reviews enable row level security;
+
+drop policy if exists "reviews_read" on public.reviews;
+create policy "reviews_read" on public.reviews
+  for select using (approved or client_id = auth.uid() or public.is_admin());
+
+drop policy if exists "reviews_client_insert" on public.reviews;
+create policy "reviews_client_insert" on public.reviews
+  for insert with check (client_id = auth.uid());
+
+drop policy if exists "reviews_admin_write" on public.reviews;
+create policy "reviews_admin_write" on public.reviews
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- ── notifications ────────────────────────────────────────────────────────
+create table if not exists public.notifications (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  type       text not null,
+  title      text not null,
+  body       text,
+  link       text,
+  read       boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table public.notifications enable row level security;
+create index if not exists notifications_user_idx on public.notifications(user_id, created_at);
+
+drop policy if exists "notifications_select_own" on public.notifications;
+create policy "notifications_select_own" on public.notifications
+  for select using (user_id = auth.uid());
+
+drop policy if exists "notifications_insert_any" on public.notifications;
+create policy "notifications_insert_any" on public.notifications
+  for insert with check (auth.role() = 'authenticated');
+
+drop policy if exists "notifications_update_own" on public.notifications;
+create policy "notifications_update_own" on public.notifications
+  for update using (user_id = auth.uid());
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables
+    where pubname='supabase_realtime' and schemaname='public' and tablename='notifications') then
+    alter publication supabase_realtime add table public.notifications;
+  end if;
+end $$;
+
+-- ── Auto-notification triggers ───────────────────────────────────────────
+create or replace function public.notify_admins(p_type text, p_title text, p_body text, p_link text)
+returns void language sql security definer set search_path = public as $$
+  insert into public.notifications(user_id, type, title, body, link)
+  select id, p_type, p_title, p_body, p_link from public.profiles where role = 'admin';
+$$;
+
+-- messages
+create or replace function public.on_message_insert()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if NEW.from_admin then
+    insert into public.notifications(user_id,type,title,body,link)
+    values (NEW.peer_id,'message','New message from support',left(NEW.body,120),'/app');
+  else
+    perform public.notify_admins('message','New message from '||NEW.sender_name,left(NEW.body,120),'/app/admin/messages');
+  end if;
+  return NEW;
+end $$;
+drop trigger if exists trg_message_notify on public.messages;
+create trigger trg_message_notify after insert on public.messages
+  for each row execute function public.on_message_insert();
+
+-- tasks (assignment)
+create or replace function public.on_task_insert()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.notifications(user_id,type,title,body,link)
+  values (NEW.expert_id,'task','New task assigned',NEW.title,'/app/expert/tasks');
+  return NEW;
+end $$;
+drop trigger if exists trg_task_notify on public.tasks;
+create trigger trg_task_notify after insert on public.tasks
+  for each row execute function public.on_task_insert();
+
+-- meetings (request + status change)
+create or replace function public.on_meeting_change()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if TG_OP = 'INSERT' then
+    perform public.notify_admins('meeting','New meeting request',NEW.topic,'/app/admin/meetings');
+  elsif NEW.status is distinct from OLD.status then
+    insert into public.notifications(user_id,type,title,body,link)
+    values (NEW.client_id,'meeting','Meeting '||NEW.status,NEW.topic,'/app/client/meetings');
+  end if;
+  return NEW;
+end $$;
+drop trigger if exists trg_meeting_notify on public.meetings;
+create trigger trg_meeting_notify after insert or update on public.meetings
+  for each row execute function public.on_meeting_change();
+
+-- orders (new + status / delivery change)
+create or replace function public.on_order_change()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if TG_OP = 'INSERT' then
+    perform public.notify_admins('order','New order '||NEW.order_number,NEW.title,'/app/admin/orders');
+  else
+    if NEW.status is distinct from OLD.status then
+      insert into public.notifications(user_id,type,title,body,link)
+      values (NEW.client_id,'order','Order '||NEW.status,NEW.title,'/app/client/orders');
+    end if;
+    if NEW.delivery_link is distinct from OLD.delivery_link and NEW.delivery_link is not null then
+      insert into public.notifications(user_id,type,title,body,link)
+      values (NEW.client_id,'order','Your delivery is ready',NEW.title,'/app/client/orders');
+    end if;
+    if NEW.follow_up is distinct from OLD.follow_up and NEW.follow_up is not null then
+      perform public.notify_admins('order','Follow-up requested',NEW.title,'/app/admin/orders');
+    end if;
+  end if;
+  return NEW;
+end $$;
+drop trigger if exists trg_order_notify on public.orders;
+create trigger trg_order_notify after insert or update on public.orders
+  for each row execute function public.on_order_change();

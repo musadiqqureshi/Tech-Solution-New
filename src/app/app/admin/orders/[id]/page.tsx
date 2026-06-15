@@ -5,12 +5,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft, Loader2, Check, X, Play, Truck, BadgeCheck,
-  DollarSign, Calendar, Tag, User, Mail,
+  DollarSign, Calendar, Tag, User, Mail, Link2, MessageCircle, ExternalLink,
 } from "lucide-react";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { StatusBadge, StatusTimeline } from "@/components/app/OrderBits";
-import { getOrder, updateOrder, nextStatus, formatMoney } from "@/lib/orders";
+import { getOrder, updateOrder, setOrderDelivery, nextStatus, formatMoney } from "@/lib/orders";
+import { generatePhaseInvoice } from "@/lib/invoices";
 import type { Order, OrderStatus } from "@/lib/types";
 
 const ADVANCE_LABEL: Partial<Record<OrderStatus, { label: string; icon: typeof Play }>> = {
@@ -27,14 +28,31 @@ export default function AdminOrderDetail() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [delivery, setDelivery] = useState("");
 
   useEffect(() => {
     if (!params.id) return;
     getOrder(params.id)
-      .then(setOrder)
+      .then((o) => {
+        setOrder(o);
+        setDelivery(o.deliveryLink ?? "");
+      })
       .catch(() => setError("Order not found."))
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  const saveDelivery = async () => {
+    if (!order?.$id) return;
+    setBusy("delivery");
+    setError("");
+    try {
+      setOrder(await setOrderDelivery(order.$id, delivery));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save delivery link.");
+    } finally {
+      setBusy("");
+    }
+  };
 
   const act = async (action: string, fields: Partial<Pick<Order, "status" | "paid">>) => {
     if (!order?.$id) return;
@@ -43,6 +61,9 @@ export default function AdminOrderDetail() {
     try {
       const updated = await updateOrder(order.$id, fields);
       setOrder(updated);
+      // Auto-issue phased invoices: 30% on approval, 70% on delivery.
+      if (fields.status === "approved") await generatePhaseInvoice(updated, "advance").catch(() => {});
+      if (fields.status === "delivered") await generatePhaseInvoice(updated, "final").catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Update failed.");
     } finally {
@@ -119,6 +140,39 @@ export default function AdminOrderDetail() {
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-5">Progress</h3>
         <StatusTimeline status={order.status} />
       </div>
+
+      {/* Final delivery (visible to the client) */}
+      <div className="glass-card p-6 mb-5">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <Link2 size={14} /> Final Delivery
+        </h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={delivery}
+            onChange={(e) => setDelivery(e.target.value)}
+            placeholder="Delivery link (Drive, GitHub, ZIP URL…) — shown to the client"
+            className="flex-1 min-w-[220px] bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-aura-purple/50 outline-none"
+          />
+          <button onClick={saveDelivery} disabled={!!busy} className="btn-primary !py-2 text-sm">
+            {busy === "delivery" ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Save
+          </button>
+          {order.deliveryLink && (
+            <a href={order.deliveryLink} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-2 text-sm">
+              <ExternalLink size={15} /> Open
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Client follow-up request */}
+      {order.followUp && (
+        <div className="glass-card p-6 mb-5 border border-aura-gold/30">
+          <h3 className="text-xs font-semibold text-aura-gold uppercase tracking-widest mb-3 flex items-center gap-2">
+            <MessageCircle size={14} /> Client Follow-up Request
+          </h3>
+          <p className="text-sm text-gray-300 whitespace-pre-wrap break-words">{order.followUp}</p>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-3 gap-5">
         <div className="md:col-span-2 space-y-5">

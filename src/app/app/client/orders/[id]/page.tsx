@@ -3,27 +3,70 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Loader2, Calendar, Tag, FileText, Download } from "lucide-react";
+import { ArrowLeft, Loader2, Calendar, Tag, FileText, Download, ExternalLink, MessageCircle, Send, Check, Star } from "lucide-react";
 import { useRequireRole } from "@/components/app/PortalGuard";
+import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/app/ui";
 import { StatusBadge, StatusTimeline } from "@/components/app/OrderBits";
-import { getOrder, formatMoney } from "@/lib/orders";
-import type { Order } from "@/lib/types";
+import { getOrder, setOrderFollowUp, formatMoney } from "@/lib/orders";
+import { getMyOrderReview, submitReview } from "@/lib/reviews";
+import type { Order, Review } from "@/lib/types";
 
 export default function OrderDetail() {
   useRequireRole(["client", "admin"]);
+  const { user } = useAuth();
   const params = useParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [followUp, setFollowUp] = useState("");
+  const [savingFu, setSavingFu] = useState(false);
+  const [fuSaved, setFuSaved] = useState(false);
+  const [review, setReview] = useState<Review | null>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [savingReview, setSavingReview] = useState(false);
 
   useEffect(() => {
     if (!params.id) return;
     getOrder(params.id)
-      .then(setOrder)
+      .then((o) => {
+        setOrder(o);
+        setFollowUp(o.followUp ?? "");
+        if (user?.id && o.$id) getMyOrderReview(o.$id, user.id).then(setReview).catch(() => {});
+      })
       .catch(() => setError("Order not found or you don’t have access."))
       .finally(() => setLoading(false));
-  }, [params.id]);
+  }, [params.id, user?.id]);
+
+  const submitMyReview = async () => {
+    if (!order?.$id || !user) return;
+    setSavingReview(true);
+    try {
+      const r = await submitReview({
+        orderId: order.$id,
+        clientId: user.id,
+        clientName: user.name,
+        rating,
+        comment: comment.trim() || undefined,
+      });
+      setReview(r);
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
+  const submitFollowUp = async () => {
+    if (!order?.$id || !followUp.trim()) return;
+    setSavingFu(true);
+    try {
+      setOrder(await setOrderFollowUp(order.$id, followUp.trim()));
+      setFuSaved(true);
+      setTimeout(() => setFuSaved(false), 2500);
+    } finally {
+      setSavingFu(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -84,22 +127,83 @@ export default function OrderDetail() {
           )}
           <div className="glass-card p-6">
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-              <Download size={16} className="text-aura-cyan" /> Deliverables
+              <Download size={16} className="text-aura-cyan" /> Final Delivery
             </h3>
-            {order.deliverableFileIds?.length ? (
-              <ul className="text-sm text-gray-300 space-y-2">
-                {order.deliverableFileIds.map((id) => (
-                  <li key={id} className="flex items-center gap-2">
-                    <FileText size={14} className="text-gray-500" /> {id}
-                  </li>
-                ))}
-              </ul>
+            {order.deliveryLink ? (
+              <a href={order.deliveryLink} target="_blank" rel="noopener noreferrer" className="btn-primary !py-2 text-sm">
+                <ExternalLink size={15} /> Open / Download Delivery
+              </a>
             ) : (
               <p className="text-sm text-gray-500">
-                No deliverables yet — they’ll appear here once your project is delivered.
+                No delivery yet — your final files/link will appear here once the project is delivered.
               </p>
             )}
           </div>
+
+          {/* Follow-up request (after delivery) */}
+          {(order.status === "delivered" || order.status === "completed") && (
+            <div className="glass-card p-6">
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <MessageCircle size={16} className="text-aura-gold" /> Request a Follow-up
+              </h3>
+              <p className="text-xs text-gray-500 mb-3">
+                Need revisions or have a reference link? Send a follow-up request and our team will pick it up.
+              </p>
+              <textarea
+                value={followUp}
+                onChange={(e) => setFollowUp(e.target.value)}
+                rows={3}
+                placeholder="Describe the changes you need, and paste any reference link…"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-aura-purple/50 outline-none"
+              />
+              <button onClick={submitFollowUp} disabled={savingFu || !followUp.trim()} className="btn-primary !py-2 text-sm mt-3">
+                {savingFu ? <Loader2 size={15} className="animate-spin" /> : fuSaved ? <Check size={15} /> : <Send size={15} />}
+                {fuSaved ? "Sent" : "Send Follow-up"}
+              </button>
+            </div>
+          )}
+
+          {/* Review (after delivery) */}
+          {(order.status === "delivered" || order.status === "completed") && (
+            <div className="glass-card p-6">
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <Star size={16} className="text-aura-gold" /> {review ? "Your Review" : "Write a Review"}
+              </h3>
+              {review ? (
+                <div>
+                  <div className="flex gap-1 mb-2">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star key={n} size={18} className={n <= review.rating ? "text-aura-gold fill-aura-gold" : "text-gray-600"} />
+                    ))}
+                  </div>
+                  {review.comment && <p className="text-sm text-gray-300">{review.comment}</p>}
+                  <p className="text-xs text-gray-600 mt-2">
+                    Thanks for your feedback!{review.approved ? " It’s featured on our site." : " Pending review."}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-1.5 mb-3">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button key={n} type="button" onClick={() => setRating(n)}>
+                        <Star size={26} className={n <= rating ? "text-aura-gold fill-aura-gold" : "text-gray-600 hover:text-gray-400"} />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={3}
+                    placeholder="How was your experience working with us?"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-aura-purple/50 outline-none"
+                  />
+                  <button onClick={submitMyReview} disabled={savingReview} className="btn-primary !py-2 text-sm mt-3">
+                    {savingReview ? <Loader2 size={15} className="animate-spin" /> : <Star size={15} />} Submit Review
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Meta */}

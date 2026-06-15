@@ -1,5 +1,7 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
-import type { Invoice, InvoiceStatus, Currency, Order } from "./types";
+import type { Invoice, InvoiceStatus, InvoicePhase, Currency, Order } from "./types";
+
+export const ADVANCE_PERCENT = 0.3; // 30% advance, 70% on final delivery
 
 export const INVOICE_STATUS_META: Record<
   InvoiceStatus,
@@ -26,6 +28,7 @@ function rowToInvoice(r: Record<string, unknown>): Invoice {
     issuedDate: (r.issued_date as string) ?? undefined,
     dueDate: (r.due_date as string) ?? undefined,
     source: (r.source as "manual" | "auto") ?? undefined,
+    phase: (r.phase as InvoicePhase) ?? "full",
   };
 }
 
@@ -60,6 +63,7 @@ export interface NewInvoiceInput {
   dueDate?: string;
   orderId?: string;
   source?: "manual" | "auto";
+  phase?: InvoicePhase;
 }
 
 export async function createInvoice(input: NewInvoiceInput): Promise<Invoice> {
@@ -77,6 +81,7 @@ export async function createInvoice(input: NewInvoiceInput): Promise<Invoice> {
       currency: input.currency ?? null,
       due_date: input.dueDate || null,
       source: input.source ?? "manual",
+      phase: input.phase ?? "full",
       status: "unpaid",
     })
     .select()
@@ -85,7 +90,7 @@ export async function createInvoice(input: NewInvoiceInput): Promise<Invoice> {
   return rowToInvoice(data);
 }
 
-/** Admin: auto-generate an invoice from an existing order. */
+/** Admin: auto-generate a full-amount invoice from an existing order. */
 export async function generateFromOrder(order: Order): Promise<Invoice> {
   return createInvoice({
     clientId: order.clientId,
@@ -96,6 +101,39 @@ export async function generateFromOrder(order: Order): Promise<Invoice> {
     currency: order.currency,
     orderId: order.$id,
     source: "auto",
+    phase: "full",
+  });
+}
+
+/**
+ * Auto-generate a phased invoice (30% advance on approval, 70% on delivery).
+ * Idempotent per order+phase so re-triggering won't duplicate.
+ */
+export async function generatePhaseInvoice(
+  order: Order,
+  phase: "advance" | "final"
+): Promise<Invoice | null> {
+  if (!order.$id || !order.budget) return null;
+  const { count } = await supabase
+    .from("invoices")
+    .select("*", { count: "exact", head: true })
+    .eq("order_id", order.$id)
+    .eq("phase", phase);
+  if ((count ?? 0) > 0) return null; // already issued
+
+  const pct = phase === "advance" ? ADVANCE_PERCENT : 1 - ADVANCE_PERCENT;
+  const amount = Math.round((order.budget * pct + Number.EPSILON) * 100) / 100;
+  const label = phase === "advance" ? "30% advance payment" : "70% final payment (on delivery)";
+  return createInvoice({
+    clientId: order.clientId,
+    clientName: order.clientName,
+    clientEmail: order.clientEmail,
+    description: `${label} — ${order.title} (Order ${order.orderNumber})`,
+    amount,
+    currency: order.currency,
+    orderId: order.$id,
+    source: "auto",
+    phase,
   });
 }
 

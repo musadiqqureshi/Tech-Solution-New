@@ -34,6 +34,74 @@ function rowToExpert(r: Record<string, unknown>): Expert {
   };
 }
 
+/** Admin: every expert in the directory (visible or not). */
+export async function listAllExperts(): Promise<Expert[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from("experts")
+    .select("*")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []).map(rowToExpert);
+}
+
+export interface ExpertInput {
+  name: string;
+  role: string;
+  skills: string[];
+  avatarUrl?: string;
+  visibleOnHomepage?: boolean;
+}
+
+export async function createExpert(input: ExpertInput): Promise<Expert> {
+  const { data, error } = await supabase
+    .from("experts")
+    .insert({
+      name: input.name,
+      role: input.role,
+      skills: input.skills,
+      avatar_url: input.avatarUrl ?? null,
+      visible_on_homepage: input.visibleOnHomepage ?? true,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToExpert(data);
+}
+
+export async function updateExpert(id: string, input: ExpertInput): Promise<Expert> {
+  const { data, error } = await supabase
+    .from("experts")
+    .update({
+      name: input.name,
+      role: input.role,
+      skills: input.skills,
+      avatar_url: input.avatarUrl ?? null,
+      visible_on_homepage: input.visibleOnHomepage ?? true,
+    })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToExpert(data);
+}
+
+export async function setExpertVisible(id: string, visible: boolean): Promise<Expert> {
+  const { data, error } = await supabase
+    .from("experts")
+    .update({ visible_on_homepage: visible })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToExpert(data);
+}
+
+export async function deleteExpert(id: string): Promise<void> {
+  const { error } = await supabase.from("experts").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /** Load experts flagged as visible on the homepage; fall back to seed data. */
 export async function getHomepageExperts(): Promise<Expert[]> {
   if (!isSupabaseConfigured) return FALLBACK_EXPERTS as Expert[];

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ListTodo, Play, Send, Calendar, Wallet } from "lucide-react";
+import { Loader2, ListTodo, Play, Send, Calendar, Wallet, Link2, Check } from "lucide-react";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { TaskBadge, TaskTimeline } from "@/components/app/TaskBits";
-import { listExpertTasks, setMyTaskStatus, expertNextStatus } from "@/lib/tasks";
+import { listExpertTasks, setMyTaskStatus, setMyTaskDelivery, expertNextStatus } from "@/lib/tasks";
 import { formatMoney } from "@/lib/orders";
 import type { Task } from "@/lib/types";
 
@@ -15,6 +15,8 @@ export default function ExpertTasks() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [links, setLinks] = useState<Record<string, string>>({});
+  const [savedId, setSavedId] = useState("");
 
   useEffect(() => {
     listExpertTasks()
@@ -22,6 +24,23 @@ export default function ExpertTasks() {
       .catch(() => setTasks([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const saveDelivery = async (t: Task) => {
+    if (!t.$id) return;
+    const link = links[t.$id] ?? t.deliveryLink ?? "";
+    setBusy(t.$id + "-d");
+    setError("");
+    try {
+      await setMyTaskDelivery(t.$id, link);
+      setTasks((prev) => prev.map((x) => (x.$id === t.$id ? { ...x, deliveryLink: link } : x)));
+      setSavedId(t.$id);
+      setTimeout(() => setSavedId(""), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save delivery link.");
+    } finally {
+      setBusy("");
+    }
+  };
 
   const act = async (t: Task) => {
     const next = expertNextStatus(t.status);
@@ -83,6 +102,21 @@ export default function ExpertTasks() {
 
                 <div className="mb-5">
                   <TaskTimeline status={t.status} />
+                </div>
+
+                {/* Final delivery link */}
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <Link2 size={15} className="text-aura-cyan shrink-0" />
+                  <input
+                    placeholder="Final delivery link (Drive, GitHub, Figma…)"
+                    defaultValue={t.deliveryLink ?? ""}
+                    onChange={(e) => t.$id && setLinks((p) => ({ ...p, [t.$id!]: e.target.value }))}
+                    className="flex-1 min-w-[200px] bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-aura-purple/50 outline-none"
+                  />
+                  <button onClick={() => saveDelivery(t)} disabled={!!busy} className="btn-secondary !py-2 text-xs">
+                    {busy === t.$id + "-d" ? <Loader2 size={14} className="animate-spin" /> : savedId === t.$id ? <Check size={14} /> : <Link2 size={14} />}
+                    {savedId === t.$id ? "Saved" : "Save delivery"}
+                  </button>
                 </div>
 
                 {next ? (
