@@ -45,7 +45,10 @@ export default function NotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-[-1]" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-2 w-80 max-h-[70vh] overflow-y-auto glass-card p-2 shadow-2xl">
+          <div
+            className="absolute right-0 mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-2xl border border-white/15 p-2 shadow-2xl"
+            style={{ background: "#14142a" }}
+          >
             <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-widest">
               Notifications
             </div>
