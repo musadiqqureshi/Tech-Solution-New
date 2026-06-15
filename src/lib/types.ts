@@ -93,3 +93,22 @@ export interface ExpertOption {
   name: string;
   email: string;
 }
+
+export type InvoiceStatus = "unpaid" | "paid" | "void";
+
+export interface Invoice {
+  $id?: string;
+  $createdAt?: string;
+  invoiceNumber: string;
+  orderId?: string;
+  clientId: string;
+  clientName: string;
+  clientEmail: string;
+  description: string;
+  amount: number;
+  currency?: Currency;
+  status: InvoiceStatus;
+  issuedDate?: string;
+  dueDate?: string;
+  source?: "manual" | "auto";
+}

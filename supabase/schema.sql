@@ -198,3 +198,35 @@ begin
 end;
 $$;
 grant execute on function public.set_task_status(uuid, text) to authenticated;
+
+-- ── invoices ─────────────────────────────────────────────────────────────
+create table if not exists public.invoices (
+  id             uuid primary key default gen_random_uuid(),
+  invoice_number text not null unique,
+  order_id       uuid references public.orders(id) on delete set null,
+  client_id      uuid not null references auth.users(id) on delete cascade,
+  client_name    text not null,
+  client_email   text not null,
+  description    text not null,
+  amount         numeric not null,
+  currency       text check (currency in ('USD','PKR','GBP','EUR','AUD','CAD')),
+  status         text not null default 'unpaid'
+                 check (status in ('unpaid','paid','void')),
+  issued_date    date not null default current_date,
+  due_date       date,
+  source         text not null default 'manual' check (source in ('manual','auto')),
+  created_at     timestamptz not null default now()
+);
+alter table public.invoices enable row level security;
+
+create index if not exists invoices_client_id_idx on public.invoices(client_id);
+create index if not exists invoices_status_idx on public.invoices(status);
+
+-- Clients read their own invoices; admins manage everything.
+drop policy if exists "invoices_client_select" on public.invoices;
+create policy "invoices_client_select" on public.invoices
+  for select using (client_id = auth.uid() or public.is_admin());
+
+drop policy if exists "invoices_admin_write" on public.invoices;
+create policy "invoices_admin_write" on public.invoices
+  for all using (public.is_admin()) with check (public.is_admin());

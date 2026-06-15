@@ -139,6 +139,26 @@ body {
   animation-play-state: paused;
 }
 
+/* ── Print: isolate the invoice document (Download = Save as PDF) ──────── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .invoice-doc,
+  .invoice-doc * {
+    visibility: visible;
+  }
+  .invoice-doc {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    box-shadow: none;
+    border: none;
+  }
+}
+
 /* Respect users who prefer less motion — kills all animation cost for them. */
 @media (prefers-reduced-motion: reduce) {
   *,
