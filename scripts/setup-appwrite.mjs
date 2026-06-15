@@ -130,9 +130,12 @@ async function main() {
   console.log(`\n▲ Provisioning Appwrite project ${PROJECT_ID}\n`);
 
   console.log("Database:");
-  await step(`database ${DB_ID}`, () =>
-    databases.create(DB_ID, "TSP Main")
-  );
+  try {
+    await databases.get(DB_ID);
+    skip(`database ${DB_ID}`);
+  } catch {
+    await step(`database ${DB_ID}`, () => databases.create(DB_ID, "TSP Main"));
+  }
 
   // ── lead_requests ──────────────────────────────────────────────────────
   console.log("\nCollection: lead_requests");
@@ -207,7 +210,7 @@ async function main() {
   await attr.string("profiles", "userId", 64, true);
   await attr.string("profiles", "name", 128, true);
   await attr.email("profiles", "email", true);
-  await attr.enum("profiles", "role", ["client", "expert", "admin"], true, "client");
+  await attr.enum("profiles", "role", ["client", "expert", "admin"], true);
   await attr.string("profiles", "company", 256, false);
   await attr.string("profiles", "phone", 32, false);
   await waitForAttributes("profiles");
@@ -224,8 +227,8 @@ async function main() {
     { id: "projects", name: "Projects", pub: false },
   ];
   for (const b of buckets) {
-    await step(`bucket ${b.id}`, () =>
-      storage.createBucket(
+    try {
+      await storage.createBucket(
         b.id,
         b.name,
         b.pub
@@ -234,8 +237,14 @@ async function main() {
         false, // fileSecurity
         true, // enabled
         30 * 1024 * 1024 // 30 MB max
-      )
-    );
+      );
+      ok(`bucket ${b.id}`);
+    } catch (e) {
+      if (e?.code === 409) skip(`bucket ${b.id}`);
+      else if (e?.type === "general_argument_invalid" || /maximum number of buckets/i.test(e?.message || ""))
+        console.log(`  ! bucket ${b.id} skipped — plan bucket limit reached (create manually if needed)`);
+      else throw e;
+    }
   }
 
   // ── Seed experts ─────────────────────────────────────────────────────────
