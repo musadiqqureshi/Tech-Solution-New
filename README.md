@@ -44,17 +44,34 @@ npm run dev                         # http://localhost:3000
 
 ## Appwrite setup
 
-1. Create a project at [cloud.appwrite.io](https://cloud.appwrite.io).
-2. Add a **Web platform** with hostname `localhost` (and your Vercel domain).
-3. Create a database `tsp_main` with these Stage 1 collections:
+1. Create a project at [cloud.appwrite.io](https://cloud.appwrite.io) and add a
+   **Web platform** with hostname `localhost` (and your Vercel domain).
+2. Put your project ID in `.env.local` (`NEXT_PUBLIC_APPWRITE_PROJECT_ID`) and
+   set `NEXT_PUBLIC_OWNER_EMAIL` — that account auto-promotes to `admin`.
+3. **Provision the backend automatically.** Create an API key (Overview → API
+   keys) with `databases`, `collections`, `attributes`, `indexes`, `documents`,
+   and `buckets` read/write scopes, then run:
+
+   ```bash
+   APPWRITE_PROJECT_ID=xxx APPWRITE_API_KEY=xxx npm run setup:appwrite
+   ```
+
+   This idempotently creates the database `tsp_main`, all Stage 1 collections
+   (with attributes, indexes, and permissions), the storage buckets, and seeds
+   the experts directory. Safe to re-run.
+
+   The collections it creates:
    - `lead_requests` — service, budget, timeline, description, name, email, status
    - `contacts` — name, email, subject, message
    - `experts` — name, role, skills (string[]), avatarUrl, visibleOnHomepage (bool)
    - `profiles` — userId, name, email, role, company, phone
-4. Create a storage bucket `experts` for avatars.
-5. Enable **Google OAuth** under Auth → Settings.
-6. Copy your project ID and collection IDs into `.env.local`.
-7. Set `NEXT_PUBLIC_OWNER_EMAIL` — that account auto-promotes to `admin`.
+
+4. Enable **Google OAuth** under Auth → Settings.
+5. Create a team named `admin` and add the owner account to it (collection
+   permissions grant admins read/write to leads, contacts, and experts).
+
+> The `APPWRITE_API_KEY` is server-only — never commit it or expose it to the
+> browser. It is used solely by the provisioning script.
 
 Server-only secrets (`RESEND_API_KEY`, `GEMINI_API_KEY`, `APPWRITE_API_KEY`)
 live inside Appwrite Function environment variables — never in the frontend.
