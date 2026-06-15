@@ -94,6 +94,32 @@ export interface ExpertOption {
   email: string;
 }
 
+export type MeetingStatus = "requested" | "confirmed" | "declined" | "completed";
+
+export interface Meeting {
+  $id?: string;
+  $createdAt?: string;
+  clientId: string;
+  clientName: string;
+  clientEmail: string;
+  topic: string;
+  notes?: string;
+  preferredAt: string;
+  durationMin: number;
+  status: MeetingStatus;
+  meetingLink?: string;
+}
+
+export interface ChatMessage {
+  $id?: string;
+  peerId: string;
+  fromAdmin: boolean;
+  senderName: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+}
+
 export type InvoiceStatus = "unpaid" | "paid" | "void";
 
 export interface Invoice {

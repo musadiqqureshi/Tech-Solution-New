@@ -230,3 +230,75 @@ create policy "invoices_client_select" on public.invoices
 drop policy if exists "invoices_admin_write" on public.invoices;
 create policy "invoices_admin_write" on public.invoices
   for all using (public.is_admin()) with check (public.is_admin());
+
+-- ── meetings ─────────────────────────────────────────────────────────────
+create table if not exists public.meetings (
+  id           uuid primary key default gen_random_uuid(),
+  client_id    uuid not null references auth.users(id) on delete cascade,
+  client_name  text not null,
+  client_email text not null,
+  topic        text not null,
+  notes        text,
+  preferred_at timestamptz not null,
+  duration_min int not null default 30,
+  status       text not null default 'requested'
+               check (status in ('requested','confirmed','declined','completed')),
+  meeting_link text,
+  created_at   timestamptz not null default now()
+);
+alter table public.meetings enable row level security;
+create index if not exists meetings_client_id_idx on public.meetings(client_id);
+
+drop policy if exists "meetings_select_own_or_admin" on public.meetings;
+create policy "meetings_select_own_or_admin" on public.meetings
+  for select using (client_id = auth.uid() or public.is_admin());
+
+drop policy if exists "meetings_client_insert" on public.meetings;
+create policy "meetings_client_insert" on public.meetings
+  for insert with check (client_id = auth.uid());
+
+drop policy if exists "meetings_update_own_or_admin" on public.meetings;
+create policy "meetings_update_own_or_admin" on public.meetings
+  for update using (client_id = auth.uid() or public.is_admin());
+
+drop policy if exists "meetings_admin_delete" on public.meetings;
+create policy "meetings_admin_delete" on public.meetings
+  for delete using (public.is_admin());
+
+-- ── messages (chat) ──────────────────────────────────────────────────────
+-- One conversation per non-admin user (peer_id). from_admin marks the side.
+create table if not exists public.messages (
+  id          uuid primary key default gen_random_uuid(),
+  peer_id     uuid not null references auth.users(id) on delete cascade,
+  from_admin  boolean not null default false,
+  sender_name text not null,
+  body        text not null,
+  read        boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+alter table public.messages enable row level security;
+create index if not exists messages_peer_created_idx on public.messages(peer_id, created_at);
+
+drop policy if exists "messages_select_own_or_admin" on public.messages;
+create policy "messages_select_own_or_admin" on public.messages
+  for select using (peer_id = auth.uid() or public.is_admin());
+
+drop policy if exists "messages_insert" on public.messages;
+create policy "messages_insert" on public.messages
+  for insert with check (
+    (peer_id = auth.uid() and from_admin = false) or public.is_admin()
+  );
+
+drop policy if exists "messages_update_own_or_admin" on public.messages;
+create policy "messages_update_own_or_admin" on public.messages
+  for update using (peer_id = auth.uid() or public.is_admin());
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;

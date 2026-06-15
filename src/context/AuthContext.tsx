@@ -96,7 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refresh();
     if (!isSupabaseConfigured) return;
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Ensure RLS-protected Realtime channels use the current access token.
+      supabase.realtime.setAuth(session?.access_token ?? null);
       hydrate();
     });
     return () => sub.subscription.unsubscribe();
