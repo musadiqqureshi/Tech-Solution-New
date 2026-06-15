@@ -8,7 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { account, ID, OAuthProvider, appwriteConfig, isAppwriteConfigured } from "@/lib/appwrite";
+import { account, client, ID, OAuthProvider, appwriteConfig, isAppwriteConfigured } from "@/lib/appwrite";
 import type { UserRole } from "@/lib/types";
 
 interface AuthUser {
@@ -76,6 +76,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refresh();
+
+    // Ping Appwrite on app open to verify the SDK connection.
+    if (isAppwriteConfigured) {
+      client
+        .ping()
+        .then(() =>
+          console.log(
+            `[Appwrite] ✓ Connected to ${appwriteConfig.endpoint} (project ${appwriteConfig.projectId})`
+          )
+        )
+        .catch((e) => console.error("[Appwrite] ✗ Ping failed:", e));
+    }
   }, [refresh]);
 
   const register = useCallback(
