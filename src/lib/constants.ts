@@ -95,7 +95,7 @@ export const PARTNERS = [
   "AWS",
   "Google Cloud",
   "Vercel",
-  "Appwrite",
+  "Supabase",
   "OpenAI",
   "Stripe",
   "Docker",
@@ -223,7 +223,7 @@ export const TESTIMONIALS = [
   },
 ];
 
-// Fallback experts shown when Appwrite is not yet configured.
+// Fallback experts shown when Supabase is not yet configured.
 export const FALLBACK_EXPERTS = [
   {
     name: "Ali Hassan",

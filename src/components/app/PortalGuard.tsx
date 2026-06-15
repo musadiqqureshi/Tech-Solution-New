@@ -51,9 +51,9 @@ export default function PortalGuard({ children }: { children: React.ReactNode })
         <div className="glass-card p-8 max-w-md text-center">
           <h1 className="text-xl font-black text-white mb-2">Portal coming online</h1>
           <p className="text-sm text-gray-400 mb-6">
-            Connect Appwrite (set <code>NEXT_PUBLIC_APPWRITE_PROJECT_ID</code> and
-            run <code>npm run setup:appwrite</code>) to enable the authenticated
-            portals.
+            Connect Supabase (set <code>NEXT_PUBLIC_SUPABASE_URL</code> /
+            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> and run <code>npm run setup:db</code>)
+            to enable the authenticated portals.
           </p>
           <Link href="/" className="btn-secondary">Back to site</Link>
         </div>

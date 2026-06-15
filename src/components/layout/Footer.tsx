@@ -80,7 +80,7 @@ export default function Footer() {
             © {new Date().getFullYear()} {COMPANY.name}. All rights reserved.
           </p>
           <p className="text-xs text-gray-600">
-            Built with Next.js & Appwrite · Deployed on Vercel
+            Built with Next.js & Supabase · Deployed on Vercel
           </p>
         </div>
       </div>

@@ -1,8 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import AuthShell from "@/components/auth/AuthShell";
 import { Field } from "@/components/auth/Fields";
@@ -11,15 +10,10 @@ import { useAuth } from "@/context/AuthContext";
 function ResetForm() {
   const { resetPassword } = useAuth();
   const router = useRouter();
-  const params = useSearchParams();
-  const userId = params.get("userId") ?? "";
-  const secret = params.get("secret") ?? "";
 
   const [form, setForm] = useState({ password: "", confirm: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const valid = userId && secret;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,25 +22,14 @@ function ResetForm() {
     if (form.password !== form.confirm) return setError("Passwords don’t match.");
     setLoading(true);
     try {
-      await resetPassword(userId, secret, form.password);
+      await resetPassword(form.password);
       router.push("/login");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Reset failed. Link may have expired.");
+      setError(err instanceof Error ? err.message : "Reset failed. Open this page from the reset link in your email.");
     } finally {
       setLoading(false);
     }
   };
-
-  if (!valid) {
-    return (
-      <p className="text-sm text-gray-400 text-center py-4">
-        Invalid or expired reset link.{" "}
-        <Link href="/forgot-password" className="text-aura-cyan hover:underline">
-          Request a new one
-        </Link>
-      </p>
-    );
-  }
 
   return (
     <form onSubmit={submit} className="space-y-4">

@@ -1,8 +1,5 @@
-import { databases, appwriteConfig, isAppwriteConfigured, ID } from "./appwrite";
-import { Query, Permission, Role } from "appwrite";
+import { supabase, isSupabaseConfigured } from "./supabase";
 import type { Order, OrderStatus, Currency } from "./types";
-
-const { databaseId, ordersCollectionId } = appwriteConfig;
 
 export const CURRENCIES: { code: Currency; symbol: string; label: string }[] = [
   { code: "USD", symbol: "$", label: "US Dollar" },
@@ -40,20 +37,40 @@ export function formatMoney(amount?: number, currency?: Currency): string {
   return `${c?.symbol ?? ""}${amount.toLocaleString()}`;
 }
 
+/** Map a Supabase orders row to the Order shape used by the UI. */
+function rowToOrder(r: Record<string, unknown>): Order {
+  return {
+    $id: r.id as string,
+    $createdAt: r.created_at as string,
+    orderNumber: r.order_number as string,
+    clientId: r.client_id as string,
+    clientName: r.client_name as string,
+    clientEmail: r.client_email as string,
+    service: r.service as string,
+    title: r.title as string,
+    description: r.description as string,
+    requirements: (r.requirements as string) ?? undefined,
+    budget: r.budget != null ? Number(r.budget) : undefined,
+    currency: (r.currency as Currency) ?? undefined,
+    status: r.status as OrderStatus,
+    paid: (r.paid as boolean) ?? false,
+  };
+}
+
 /** Build the next order number: TSP-YYYYMM-XXXX (sequence resets monthly). */
 async function nextOrderNumber(): Promise<string> {
   const now = new Date();
   const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
   const prefix = `TSP-${ym}-`;
   let seq = 1;
-  if (isAppwriteConfigured) {
+  if (isSupabaseConfigured) {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     try {
-      const res = await databases.listDocuments(databaseId, ordersCollectionId, [
-        Query.greaterThanEqual("$createdAt", monthStart),
-        Query.limit(1),
-      ]);
-      seq = res.total + 1;
+      const { count } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", monthStart);
+      seq = (count ?? 0) + 1;
     } catch {
       seq = 1;
     }
@@ -75,57 +92,67 @@ export interface NewOrderInput {
 
 export async function createOrder(input: NewOrderInput): Promise<Order> {
   const orderNumber = await nextOrderNumber();
-  const doc: Order = {
-    ...input,
-    orderNumber,
-    status: "pending",
-    paid: false,
-  };
 
-  if (!isAppwriteConfigured) {
-    console.info("[dev] Order created (Appwrite not configured):", doc);
-    return { ...doc, $id: "dev", $createdAt: new Date().toISOString() };
+  if (!isSupabaseConfigured) {
+    console.info("[dev] Order created (Supabase not configured):", input);
+    return {
+      ...input,
+      orderNumber,
+      status: "pending",
+      paid: false,
+      $id: "dev",
+      $createdAt: new Date().toISOString(),
+    };
   }
 
-  // Document-level security: owner can read; admin team manages.
-  const created = await databases.createDocument(
-    databaseId,
-    ordersCollectionId,
-    ID.unique(),
-    doc,
-    [
-      Permission.read(Role.user(input.clientId)),
-      Permission.update(Role.user(input.clientId)),
-      Permission.read(Role.team("admin")),
-      Permission.update(Role.team("admin")),
-      Permission.delete(Role.team("admin")),
-    ]
-  );
-  return created as unknown as Order;
+  const { data, error } = await supabase
+    .from("orders")
+    .insert({
+      order_number: orderNumber,
+      client_id: input.clientId,
+      client_name: input.clientName,
+      client_email: input.clientEmail,
+      service: input.service,
+      title: input.title,
+      description: input.description,
+      requirements: input.requirements ?? null,
+      budget: input.budget ?? null,
+      currency: input.currency ?? null,
+      status: "pending",
+      paid: false,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToOrder(data);
 }
 
 export async function listClientOrders(clientId: string): Promise<Order[]> {
-  if (!isAppwriteConfigured) return [];
-  const res = await databases.listDocuments(databaseId, ordersCollectionId, [
-    Query.equal("clientId", clientId),
-    Query.orderDesc("$createdAt"),
-    Query.limit(100),
-  ]);
-  return res.documents as unknown as Order[];
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []).map(rowToOrder);
 }
 
 export async function getOrder(id: string): Promise<Order> {
-  const doc = await databases.getDocument(databaseId, ordersCollectionId, id);
-  return doc as unknown as Order;
+  const { data, error } = await supabase.from("orders").select("*").eq("id", id).single();
+  if (error) throw error;
+  return rowToOrder(data);
 }
 
 /** Admin: list every order across all clients, newest first. */
 export async function listAllOrders(status?: OrderStatus): Promise<Order[]> {
-  if (!isAppwriteConfigured) return [];
-  const queries = [Query.orderDesc("$createdAt"), Query.limit(200)];
-  if (status) queries.push(Query.equal("status", status));
-  const res = await databases.listDocuments(databaseId, ordersCollectionId, queries);
-  return res.documents as unknown as Order[];
+  if (!isSupabaseConfigured) return [];
+  let q = supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(200);
+  if (status) q = q.eq("status", status);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map(rowToOrder);
 }
 
 /** Admin: update an order's status and/or payment flag. */
@@ -133,8 +160,14 @@ export async function updateOrder(
   id: string,
   fields: Partial<Pick<Order, "status" | "paid">>
 ): Promise<Order> {
-  const doc = await databases.updateDocument(databaseId, ordersCollectionId, id, fields);
-  return doc as unknown as Order;
+  const { data, error } = await supabase
+    .from("orders")
+    .update(fields)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToOrder(data);
 }
 
 /** The status an order advances to next (null if terminal). */

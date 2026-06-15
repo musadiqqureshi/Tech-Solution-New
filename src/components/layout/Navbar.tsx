@@ -101,7 +101,7 @@ export default function Navbar() {
           </div>
           {!configured && (
             <p className="text-[11px] text-amber-400/80 pt-1">
-              Demo mode — connect Appwrite to enable auth.
+              Demo mode — connect Supabase to enable auth.
             </p>
           )}
         </div>

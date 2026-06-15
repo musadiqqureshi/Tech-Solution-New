@@ -35,7 +35,7 @@ export default function AuthShell({
 
           {!configured && (
             <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-300">
-              Demo mode: Appwrite isn’t configured yet. Add your credentials to
+              Demo mode: Supabase isn’t configured yet. Add your credentials to
               <code className="mx-1">.env.local</code> to enable authentication.
             </div>
           )}

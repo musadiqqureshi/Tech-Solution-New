@@ -31,15 +31,15 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
       id="hero"
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-aura-mesh pt-28 pb-16"
     >
-      <div className="orb w-96 h-96 top-1/4 left-1/4 bg-aura-purple" style={{ filter: "blur(120px)", opacity: 0.14 }} />
-      <div className="orb w-80 h-80 bottom-1/4 right-1/4 bg-aura-cyan" style={{ filter: "blur(100px)", opacity: 0.12 }} />
+      <div className="orb w-96 h-96 top-1/4 left-1/4 bg-aura-purple" style={{ filter: "blur(80px)", opacity: 0.14 }} />
+      <div className="orb w-80 h-80 bottom-1/4 right-1/4 bg-aura-cyan" style={{ filter: "blur(70px)", opacity: 0.12 }} />
 
-      {/* Floating service icons */}
+      {/* Floating service icons — no backdrop-blur (they animate forever). */}
       {floatingIcons.map(({ Icon, x, y, delay }, i) => (
         <motion.div
           key={i}
-          className="absolute hidden md:grid place-items-center w-14 h-14 rounded-2xl glass-card"
-          style={{ left: x, top: y }}
+          className="absolute hidden md:grid place-items-center w-14 h-14 rounded-2xl border border-white/10"
+          style={{ left: x, top: y, background: "rgba(20,20,40,0.5)", willChange: "transform" }}
           animate={{ y: [0, -16, 0] }}
           transition={{ duration: 6, repeat: Infinity, delay, ease: "easeInOut" }}
         >
@@ -51,7 +51,7 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.4 }}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold tracking-widest uppercase mb-6"
           style={{
             background: "rgba(124,58,237,0.1)",
@@ -65,7 +65,7 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.15 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
           className="text-4xl sm:text-6xl lg:text-7xl font-black leading-tight mb-4"
         >
           <span className="text-white">We Build </span>
@@ -89,7 +89,7 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.35 }}
+          transition={{ duration: 0.45, delay: 0.2 }}
           className="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto mb-9 leading-relaxed"
         >
           Enterprise software, web & mobile apps, big data, and AI automation —
@@ -100,7 +100,7 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.5 }}
+          transition={{ duration: 0.45, delay: 0.3 }}
           className="flex flex-wrap items-center justify-center gap-3 mb-14"
         >
           <button onClick={onStartProject} className="btn-primary">
@@ -115,7 +115,7 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.65 }}
+          transition={{ duration: 0.45, delay: 0.4 }}
           className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto"
         >
           {STATS.map((s) => (

@@ -8,7 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { account, client, ID, OAuthProvider, appwriteConfig, isAppwriteConfigured } from "@/lib/appwrite";
+import { supabase, supabaseConfig, isSupabaseConfigured } from "@/lib/supabase";
 import type { UserRole } from "@/lib/types";
 
 interface AuthUser {
@@ -27,25 +27,21 @@ interface AuthContextValue {
   loginWithGoogle: () => void;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (
-    userId: string,
-    secret: string,
-    password: string
-  ) => Promise<void>;
+  resetPassword: (password: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /** Owner email is always treated as admin. */
-function deriveRole(email: string, prefRole?: string): UserRole {
+function deriveRole(email: string, profileRole?: string): UserRole {
   if (
-    appwriteConfig.ownerEmail &&
-    email.toLowerCase() === appwriteConfig.ownerEmail.toLowerCase()
+    supabaseConfig.ownerEmail &&
+    email.toLowerCase() === supabaseConfig.ownerEmail.toLowerCase()
   ) {
     return "admin";
   }
-  if (prefRole === "expert" || prefRole === "admin") return prefRole;
+  if (profileRole === "expert" || profileRole === "admin") return profileRole;
   return "client";
 }
 
@@ -53,98 +49,139 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const hydrate = useCallback(async () => {
+    const { data } = await supabase.auth.getUser();
+    const u = data.user;
+    if (!u) {
+      setUser(null);
+      return;
+    }
+    // Pull the role from the profiles table (best-effort).
+    let profileRole: string | undefined;
+    let name = (u.user_metadata?.name as string) || u.email || "";
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, role")
+        .eq("id", u.id)
+        .maybeSingle();
+      if (profile) {
+        profileRole = profile.role;
+        if (profile.name) name = profile.name;
+      }
+    } catch {
+      /* profile not found yet — fall back to metadata */
+    }
+    setUser({
+      id: u.id,
+      name,
+      email: u.email ?? "",
+      role: deriveRole(u.email ?? "", profileRole),
+    });
+  }, []);
+
   const refresh = useCallback(async () => {
-    if (!isAppwriteConfigured) {
+    if (!isSupabaseConfigured) {
       setUser(null);
       setLoading(false);
       return;
     }
     try {
-      const me = await account.get();
-      setUser({
-        id: me.$id,
-        name: me.name,
-        email: me.email,
-        role: deriveRole(me.email, (me.prefs as { role?: string })?.role),
-      });
-    } catch {
-      setUser(null);
+      await hydrate();
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hydrate]);
 
   useEffect(() => {
     refresh();
+    if (!isSupabaseConfigured) return;
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      hydrate();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [refresh, hydrate]);
 
-    // Ping Appwrite on app open to verify the SDK connection.
-    if (isAppwriteConfigured) {
-      client
-        .ping()
-        .then(() =>
-          console.log(
-            `[Appwrite] ✓ Connected to ${appwriteConfig.endpoint} (project ${appwriteConfig.projectId})`
-          )
-        )
-        .catch((e) => console.error("[Appwrite] ✗ Ping failed:", e));
-    }
-  }, [refresh]);
+  /** Insert or update the caller's own profile row. */
+  const upsertProfile = useCallback(
+    async (id: string, name: string, email: string, role: UserRole) => {
+      await supabase.from("profiles").upsert({ id, name, email, role });
+    },
+    []
+  );
 
   const register = useCallback(
     async (name: string, email: string, password: string) => {
-      await account.create(ID.unique(), email, password, name);
-      await account.createEmailPasswordSession(email, password);
       const role = deriveRole(email);
-      await account.updatePrefs({ role });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name, role } },
+      });
+      if (error) throw error;
+
+      // Ensure we have an active session (works when email confirmation is off).
+      let userId = data.user?.id;
+      if (!data.session) {
+        const { data: signIn, error: signInErr } =
+          await supabase.auth.signInWithPassword({ email, password });
+        if (signInErr) {
+          throw new Error(
+            "Account created. Please confirm your email, then log in."
+          );
+        }
+        userId = signIn.user?.id ?? userId;
+      }
+      if (userId) await upsertProfile(userId, name, email, role);
       await refresh();
     },
-    [refresh]
+    [refresh, upsertProfile]
   );
 
   const login = useCallback(
     async (email: string, password: string) => {
-      await account.createEmailPasswordSession(email, password);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
       await refresh();
     },
     [refresh]
   );
 
   const loginWithGoogle = useCallback(() => {
-    account.createOAuth2Session(
-      OAuthProvider.Google,
-      `${appwriteConfig.appUrl}/app`,
-      `${appwriteConfig.appUrl}/login?error=oauth`
-    );
+    supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${supabaseConfig.appUrl}/app` },
+    });
   }, []);
 
   const logout = useCallback(async () => {
     try {
-      await account.deleteSession("current");
+      await supabase.auth.signOut();
     } finally {
       setUser(null);
     }
   }, []);
 
   const forgotPassword = useCallback(async (email: string) => {
-    await account.createRecovery(
-      email,
-      `${appwriteConfig.appUrl}/reset-password`
-    );
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${supabaseConfig.appUrl}/reset-password`,
+    });
+    if (error) throw error;
   }, []);
 
-  const resetPassword = useCallback(
-    async (userId: string, secret: string, password: string) => {
-      await account.updateRecovery(userId, secret, password);
-    },
-    []
-  );
+  const resetPassword = useCallback(async (password: string) => {
+    // The recovery link establishes a session (detectSessionInUrl);
+    // we just set the new password on the active user.
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
-        configured: isAppwriteConfigured,
+        configured: isSupabaseConfigured,
         register,
         login,
         loginWithGoogle,
