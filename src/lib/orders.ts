@@ -56,6 +56,8 @@ function rowToOrder(r: Record<string, unknown>): Order {
     paid: (r.paid as boolean) ?? false,
     deliveryLink: (r.delivery_link as string) ?? undefined,
     followUp: (r.follow_up as string) ?? undefined,
+    deadline: (r.deadline as string) ?? undefined,
+    requirementLink: (r.requirement_link as string) ?? undefined,
   };
 }
 
@@ -90,6 +92,8 @@ export interface NewOrderInput {
   requirements?: string;
   budget?: number;
   currency?: Currency;
+  deadline?: string;
+  requirementLink?: string;
 }
 
 export async function createOrder(input: NewOrderInput): Promise<Order> {
@@ -120,6 +124,8 @@ export async function createOrder(input: NewOrderInput): Promise<Order> {
       requirements: input.requirements ?? null,
       budget: input.budget ?? null,
       currency: input.currency ?? null,
+      deadline: input.deadline || null,
+      requirement_link: input.requirementLink ?? null,
       status: "pending",
       paid: false,
     })

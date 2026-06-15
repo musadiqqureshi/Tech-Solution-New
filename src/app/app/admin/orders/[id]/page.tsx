@@ -186,6 +186,16 @@ export default function AdminOrderDetail() {
               <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{order.requirements}</p>
             </div>
           )}
+          {order.requirementLink && (
+            <div className="glass-card p-6">
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <Link2 size={15} className="text-aura-cyan" /> Requirement Files
+              </h3>
+              <a href={order.requirementLink} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-2 text-sm">
+                <ExternalLink size={15} /> Open client’s link
+              </a>
+            </div>
+          )}
         </div>
         <div className="space-y-3">
           <div className="glass-card p-5 space-y-4">
@@ -194,6 +204,7 @@ export default function AdminOrderDetail() {
             <Meta icon={Tag} label="Service" value={order.service} />
             <Meta icon={DollarSign} label="Budget" value={formatMoney(order.budget, order.currency)} />
             <Meta icon={Calendar} label="Created" value={created} />
+            {order.deadline && <Meta icon={Calendar} label="Deadline" value={new Date(order.deadline).toLocaleDateString()} />}
           </div>
         </div>
       </div>

@@ -80,7 +80,10 @@ export default function ExpertTasks() {
               <div key={t.$id} className="glass-card p-6">
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="min-w-0">
-                    <TaskBadge status={t.status} />
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      {t.taskNumber && <span className="font-mono text-xs text-aura-cyan">{t.taskNumber}</span>}
+                      <TaskBadge status={t.status} />
+                    </div>
                     <h3 className="text-white font-bold mt-2">{t.title}</h3>
                   </div>
                   <div className="text-right shrink-0 text-sm">

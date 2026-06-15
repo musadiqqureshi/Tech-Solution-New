@@ -82,6 +82,7 @@ export default function AdminTasks() {
                 <div className="flex items-start gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2.5 flex-wrap">
+                      {t.taskNumber && <span className="font-mono text-xs text-aura-cyan">{t.taskNumber}</span>}
                       <TaskBadge status={t.status} />
                       {t.deadline && (
                         <span className="text-[11px] text-gray-500">Due {t.deadline}</span>

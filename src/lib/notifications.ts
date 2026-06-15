@@ -31,6 +31,11 @@ export async function markAllNotificationsRead(): Promise<void> {
   await supabase.from("notifications").update({ read: true }).eq("read", false);
 }
 
+export async function markNotificationsReadByType(type: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  await supabase.from("notifications").update({ read: true }).eq("type", type).eq("read", false);
+}
+
 /** Realtime: new notifications for this user. Returns an unsubscribe fn. */
 export function subscribeNotifications(
   userId: string,

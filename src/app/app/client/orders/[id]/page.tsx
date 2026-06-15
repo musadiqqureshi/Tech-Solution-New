@@ -10,7 +10,9 @@ import { PageHeader } from "@/components/app/ui";
 import { StatusBadge, StatusTimeline } from "@/components/app/OrderBits";
 import { getOrder, setOrderFollowUp, formatMoney } from "@/lib/orders";
 import { getMyOrderReview, submitReview } from "@/lib/reviews";
-import type { Order, Review } from "@/lib/types";
+import { listOrderInvoices } from "@/lib/invoices";
+import { InvoiceBadge } from "@/components/app/InvoiceDocument";
+import type { Order, Review, Invoice } from "@/lib/types";
 
 export default function OrderDetail() {
   useRequireRole(["client", "admin"]);
@@ -26,6 +28,7 @@ export default function OrderDetail() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [savingReview, setSavingReview] = useState(false);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   useEffect(() => {
     if (!params.id) return;
@@ -33,6 +36,7 @@ export default function OrderDetail() {
       .then((o) => {
         setOrder(o);
         setFollowUp(o.followUp ?? "");
+        if (o.$id) listOrderInvoices(o.$id).then(setInvoices).catch(() => {});
         if (user?.id && o.$id) getMyOrderReview(o.$id, user.id).then(setReview).catch(() => {});
       })
       .catch(() => setError("Order not found or you don’t have access."))
@@ -140,6 +144,40 @@ export default function OrderDetail() {
             )}
           </div>
 
+          {/* Invoices */}
+          {invoices.length > 0 && (
+            <div className="glass-card p-6">
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <FileText size={16} className="text-aura-cyan" /> Invoices
+              </h3>
+              <div className="space-y-2">
+                {invoices.map((inv) => (
+                  <Link
+                    key={inv.$id}
+                    href={`/app/client/invoices/${inv.$id}`}
+                    className="flex items-center gap-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors px-3 py-2.5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-aura-cyan">{inv.invoiceNumber}</span>
+                        <InvoiceBadge status={inv.status} />
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">
+                        {inv.phase === "advance" ? "30% advance" : inv.phase === "final" ? "70% final" : "Full"} · {formatMoney(inv.amount, inv.currency)}
+                      </p>
+                    </div>
+                    <Download size={15} className="text-gray-400 shrink-0" />
+                  </Link>
+                ))}
+              </div>
+              {invoices.some((i) => i.phase === "advance" && i.status === "unpaid") && (
+                <p className="text-xs text-amber-400/90 mt-3">
+                  Please download and pay the 30% advance invoice — your project will be started once the advance is confirmed.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Follow-up request (after delivery) */}
           {(order.status === "delivered" || order.status === "completed") && (
             <div className="glass-card p-6">
@@ -211,7 +249,19 @@ export default function OrderDetail() {
           <div className="glass-card p-5 space-y-4">
             <Meta icon={Tag} label="Service" value={order.service} />
             <Meta icon={Calendar} label="Created" value={created} />
+            {order.deadline && <Meta icon={Calendar} label="Deadline" value={new Date(order.deadline).toLocaleDateString()} />}
             <Meta icon={FileText} label="Budget" value={formatMoney(order.budget, order.currency)} />
+            {order.requirementLink && (
+              <div className="flex items-start gap-3">
+                <ExternalLink size={16} className="text-aura-purple mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-widest text-gray-500">Requirement files</p>
+                  <a href={order.requirementLink} target="_blank" rel="noopener noreferrer" className="text-sm text-aura-cyan hover:underline break-all">
+                    Open link
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

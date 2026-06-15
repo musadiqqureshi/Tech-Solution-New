@@ -160,6 +160,18 @@ export async function listAllInvoices(): Promise<Invoice[]> {
   return (data ?? []).map(rowToInvoice);
 }
 
+/** Invoices linked to a specific order (client can read their own). */
+export async function listOrderInvoices(orderId: string): Promise<Invoice[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToInvoice);
+}
+
 export async function getInvoice(id: string): Promise<Invoice> {
   const { data, error } = await supabase.from("invoices").select("*").eq("id", id).single();
   if (error) throw error;

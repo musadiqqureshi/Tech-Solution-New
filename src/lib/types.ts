@@ -56,6 +56,8 @@ export interface Order {
   deliverableFileIds?: string[];
   deliveryLink?: string;
   followUp?: string;
+  deadline?: string;
+  requirementLink?: string;
 }
 
 export interface Expert {
@@ -77,6 +79,7 @@ export type TaskStatus =
 export interface Task {
   $id?: string;
   $createdAt?: string;
+  taskNumber?: string;
   orderId?: string;
   title: string;
   description: string;

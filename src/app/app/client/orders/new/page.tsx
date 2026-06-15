@@ -25,6 +25,8 @@ export default function NewOrder() {
     title: "",
     description: "",
     requirements: "",
+    requirementLink: "",
+    deadline: "",
     budget: "",
     currency: "USD" as Currency,
   });
@@ -53,6 +55,8 @@ export default function NewOrder() {
         title: form.title.trim(),
         description: form.description.trim(),
         requirements: form.requirements.trim() || undefined,
+        requirementLink: form.requirementLink.trim() || undefined,
+        deadline: form.deadline || undefined,
         budget: form.budget ? Number(form.budget) : undefined,
         currency: form.currency,
       });
@@ -111,8 +115,32 @@ export default function NewOrder() {
             value={form.requirements}
             onChange={set("requirements")}
             rows={3}
-            placeholder="Key features, integrations, deadlines, anything specific..."
+            placeholder="Key features, integrations, anything specific..."
             className={`${inputCls} resize-none`}
+          />
+        </label>
+
+        <label className="block">
+          <span className={labelCls}>Requirement files / source link (optional)</span>
+          <input
+            value={form.requirementLink}
+            onChange={set("requirementLink")}
+            placeholder="GitHub, Google Drive, or OneDrive link"
+            className={inputCls}
+          />
+          <span className="text-[11px] text-gray-500 mt-1 block">
+            Paste a GitHub repo, Google Drive, or OneDrive link with your requirement files.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className={labelCls}>Preferred deadline (optional)</span>
+          <input
+            type="date"
+            value={form.deadline}
+            onChange={set("deadline")}
+            min={new Date().toISOString().split("T")[0]}
+            className={inputCls}
           />
         </label>
 

@@ -5,22 +5,39 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Sparkles, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationsContext";
 import { NAV } from "@/lib/nav";
 import type { UserRole } from "@/lib/types";
 
+/** Map a nav href to the notification type that should badge it. */
+function navType(href: string): string | null {
+  if (href.includes("/messages")) return "message";
+  if (href.includes("/orders")) return "order";
+  if (href.includes("/tasks")) return "task";
+  if (href.includes("/meetings")) return "meeting";
+  if (href.includes("/invoices")) return "invoice";
+  return null;
+}
+
 function NavList({ role, onNavigate }: { role: UserRole; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { unreadByType, markTypeRead } = useNotifications();
   return (
     <nav className="space-y-1">
       {NAV[role].map((item) => {
         const active =
           pathname === item.href ||
           (item.href !== `/app/${role}` && pathname.startsWith(item.href));
+        const type = navType(item.href);
+        const count = type ? unreadByType[type] ?? 0 : 0;
         return (
           <Link
             key={item.href}
             href={item.href}
-            onClick={onNavigate}
+            onClick={() => {
+              if (type && count > 0) markTypeRead(type);
+              onNavigate?.();
+            }}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
               active
                 ? "bg-gradient-to-r from-aura-purple/30 to-aura-cyan/15 text-white border border-aura-purple/30"
@@ -28,7 +45,12 @@ function NavList({ role, onNavigate }: { role: UserRole; onNavigate?: () => void
             }`}
           >
             <item.icon size={18} />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {count > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-aura-purple text-white text-[10px] font-bold grid place-items-center">
+                {count > 9 ? "9+" : count}
+              </span>
+            )}
           </Link>
         );
       })}

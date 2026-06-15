@@ -474,3 +474,33 @@ end $$;
 drop trigger if exists trg_order_notify on public.orders;
 create trigger trg_order_notify after insert or update on public.orders
   for each row execute function public.on_order_change();
+
+-- ── Refinements: deadlines, requirement links, task serial, submit notify ──
+alter table public.orders add column if not exists deadline date;
+alter table public.orders add column if not exists requirement_link text;
+alter table public.tasks  add column if not exists task_number text;
+
+-- expose task_number + delivery_link to experts
+create or replace view public.expert_tasks as
+  select id, order_id, title, description, status, deadline,
+         expert_budget, currency, created_at, expert_id, delivery_link, task_number
+  from public.tasks
+  where expert_id = auth.uid();
+grant select on public.expert_tasks to authenticated;
+
+-- Notify admins when an expert submits or attaches a delivery on their task.
+create or replace function public.on_task_update()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if NEW.status = 'submitted' and OLD.status is distinct from 'submitted' then
+    perform public.notify_admins('task','Expert submitted a final delivery — please review',
+      coalesce(NEW.task_number||' · ','')||NEW.title, '/app/admin/tasks');
+  end if;
+  if NEW.delivery_link is distinct from OLD.delivery_link and NEW.delivery_link is not null then
+    perform public.notify_admins('task','Expert attached a delivery link', NEW.title, '/app/admin/tasks');
+  end if;
+  return NEW;
+end $$;
+drop trigger if exists trg_task_update_notify on public.tasks;
+create trigger trg_task_update_notify after update on public.tasks
+  for each row execute function public.on_task_update();

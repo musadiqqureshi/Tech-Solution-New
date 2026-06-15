@@ -30,6 +30,7 @@ function rowToTask(r: Record<string, unknown>): Task {
   return {
     $id: r.id as string,
     $createdAt: r.created_at as string,
+    taskNumber: (r.task_number as string) ?? undefined,
     orderId: (r.order_id as string) ?? undefined,
     title: r.title as string,
     description: r.description as string,
@@ -56,11 +57,33 @@ export interface NewTaskInput {
   orderId?: string;
 }
 
+/** Build the next task serial: TSK-YYYYMM-XXXX (resets monthly). */
+async function nextTaskNumber(): Promise<string> {
+  const now = new Date();
+  const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+  let seq = 1;
+  if (isSupabaseConfigured) {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    try {
+      const { count } = await supabase
+        .from("tasks")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", monthStart);
+      seq = (count ?? 0) + 1;
+    } catch {
+      seq = 1;
+    }
+  }
+  return `TSK-${ym}-${String(seq).padStart(4, "0")}`;
+}
+
 /** Admin: create + assign a task to an expert. */
 export async function createTask(input: NewTaskInput): Promise<Task> {
+  const taskNumber = await nextTaskNumber();
   const { data, error } = await supabase
     .from("tasks")
     .insert({
+      task_number: taskNumber,
       title: input.title,
       description: input.description,
       expert_id: input.expertId,
