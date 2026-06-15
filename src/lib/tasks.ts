@@ -1,0 +1,155 @@
+import { supabase, isSupabaseConfigured } from "./supabase";
+import type { Task, TaskStatus, Currency, ExpertOption } from "./types";
+
+export const TASK_STATUS_META: Record<
+  TaskStatus,
+  { label: string; color: string; step: number }
+> = {
+  assigned: { label: "Assigned", color: "#fbbf24", step: 0 },
+  in_progress: { label: "In Progress", color: "#a78bfa", step: 1 },
+  submitted: { label: "Submitted", color: "#22d3ee", step: 2 },
+  approved: { label: "Approved", color: "#60a5fa", step: 3 },
+  completed: { label: "Completed", color: "#34d399", step: 4 },
+};
+
+export const TASK_FLOW: TaskStatus[] = [
+  "assigned",
+  "in_progress",
+  "submitted",
+  "approved",
+  "completed",
+];
+
+/** Profit is admin-only: client budget minus expert budget. */
+export function taskProfit(t: Task): number | null {
+  if (t.clientBudget == null || t.expertBudget == null) return null;
+  return t.clientBudget - t.expertBudget;
+}
+
+function rowToTask(r: Record<string, unknown>): Task {
+  return {
+    $id: r.id as string,
+    $createdAt: r.created_at as string,
+    orderId: (r.order_id as string) ?? undefined,
+    title: r.title as string,
+    description: r.description as string,
+    expertId: r.expert_id as string,
+    expertName: (r.expert_name as string) ?? undefined,
+    status: r.status as TaskStatus,
+    deadline: (r.deadline as string) ?? undefined,
+    expertBudget: r.expert_budget != null ? Number(r.expert_budget) : undefined,
+    clientBudget: r.client_budget != null ? Number(r.client_budget) : undefined,
+    currency: (r.currency as Currency) ?? undefined,
+  };
+}
+
+export interface NewTaskInput {
+  title: string;
+  description: string;
+  expertId: string;
+  expertName?: string;
+  deadline?: string;
+  expertBudget?: number;
+  clientBudget?: number;
+  currency?: Currency;
+  orderId?: string;
+}
+
+/** Admin: create + assign a task to an expert. */
+export async function createTask(input: NewTaskInput): Promise<Task> {
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert({
+      title: input.title,
+      description: input.description,
+      expert_id: input.expertId,
+      expert_name: input.expertName ?? null,
+      deadline: input.deadline || null,
+      expert_budget: input.expertBudget ?? null,
+      client_budget: input.clientBudget ?? null,
+      currency: input.currency ?? null,
+      order_id: input.orderId ?? null,
+      status: "assigned",
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToTask(data);
+}
+
+/** Admin: every task across all experts, newest first (includes financials). */
+export async function listAllTasks(): Promise<Task[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return (data ?? []).map(rowToTask);
+}
+
+export async function getTask(id: string): Promise<Task> {
+  const { data, error } = await supabase.from("tasks").select("*").eq("id", id).single();
+  if (error) throw error;
+  return rowToTask(data);
+}
+
+/** Admin: advance a task (e.g. submitted → approved → completed). */
+export async function updateTaskStatus(id: string, status: TaskStatus): Promise<Task> {
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ status })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToTask(data);
+}
+
+/** Expert: their assigned tasks via the financial-safe view (no client budget). */
+export async function listExpertTasks(): Promise<Task[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from("expert_tasks")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return (data ?? []).map(rowToTask);
+}
+
+/** Expert: advance their own task (in_progress | submitted) via guarded RPC. */
+export async function setMyTaskStatus(taskId: string, status: TaskStatus): Promise<void> {
+  const { error } = await supabase.rpc("set_task_status", {
+    p_task_id: taskId,
+    p_status: status,
+  });
+  if (error) throw error;
+}
+
+/** Admin: list expert accounts available for assignment. */
+export async function listExperts(): Promise<ExpertOption[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, name, email")
+    .eq("role", "expert")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []) as ExpertOption[];
+}
+
+/** Next status for an expert acting on their own task (null if not theirs to move). */
+export function expertNextStatus(status: TaskStatus): TaskStatus | null {
+  if (status === "assigned") return "in_progress";
+  if (status === "in_progress") return "submitted";
+  return null;
+}
+
+/** Next status for an admin acting on a task (null if terminal/expert-owned). */
+export function adminNextStatus(status: TaskStatus): TaskStatus | null {
+  if (status === "submitted") return "approved";
+  if (status === "approved") return "completed";
+  return null;
+}

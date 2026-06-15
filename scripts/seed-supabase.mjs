@@ -54,6 +54,13 @@ const EXPERTS = [
   { name: "Hamza Iqbal", role: "Mobile Engineer", skills: ["Flutter", "Kotlin", "Swift"] },
 ];
 
+// Expert login accounts (so admins can assign tasks and experts can sign in).
+const EXPERT_USERS = EXPERTS.map((e) => ({
+  name: e.name,
+  email: `${e.name.toLowerCase().replace(/\s+/g, ".")}@techsolutions.test`,
+  role: "expert",
+}));
+
 /** Find an existing auth user by email (paginates the admin list). */
 async function findUserByEmail(email) {
   for (let page = 1; page <= 10; page++) {
@@ -117,11 +124,14 @@ async function main() {
   console.log("Users:");
   for (const u of USERS) await ensureUser(u);
 
+  console.log("\nExpert accounts:");
+  for (const u of EXPERT_USERS) await ensureUser(u);
+
   console.log("\nExperts directory:");
   for (const e of EXPERTS) await ensureExpert(e);
 
   console.log("\n✓ Done. Sample logins (password above):");
-  for (const u of USERS) console.log(`  ${u.role.padEnd(6)} ${u.email}`);
+  for (const u of [...USERS, ...EXPERT_USERS]) console.log(`  ${u.role.padEnd(6)} ${u.email}`);
   console.log("");
 }
 

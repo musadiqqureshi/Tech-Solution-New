@@ -64,3 +64,32 @@ export interface Expert {
   avatarUrl?: string;
   visibleOnHomepage?: boolean;
 }
+
+export type TaskStatus =
+  | "assigned"
+  | "in_progress"
+  | "submitted"
+  | "approved"
+  | "completed";
+
+export interface Task {
+  $id?: string;
+  $createdAt?: string;
+  orderId?: string;
+  title: string;
+  description: string;
+  expertId: string;
+  expertName?: string;
+  status: TaskStatus;
+  deadline?: string;
+  expertBudget?: number;
+  clientBudget?: number; // admin-only (profit source)
+  currency?: Currency;
+}
+
+/** An expert option for admin task assignment. */
+export interface ExpertOption {
+  id: string;
+  name: string;
+  email: string;
+}

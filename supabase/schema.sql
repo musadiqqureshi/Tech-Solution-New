@@ -142,3 +142,59 @@ create policy "orders_update_owner_or_admin" on public.orders
 drop policy if exists "orders_admin_delete" on public.orders;
 create policy "orders_admin_delete" on public.orders
   for delete using (public.is_admin());
+
+-- ── tasks ────────────────────────────────────────────────────────────────
+create table if not exists public.tasks (
+  id            uuid primary key default gen_random_uuid(),
+  order_id      uuid references public.orders(id) on delete set null,
+  title         text not null,
+  description   text not null,
+  expert_id     uuid not null references auth.users(id) on delete cascade,
+  expert_name   text,
+  status        text not null default 'assigned'
+                check (status in ('assigned','in_progress','submitted','approved','completed')),
+  deadline      date,
+  expert_budget numeric,
+  client_budget numeric,                 -- admin-only (profit source)
+  currency      text check (currency in ('USD','PKR','GBP','EUR','AUD','CAD')),
+  created_at    timestamptz not null default now()
+);
+alter table public.tasks enable row level security;
+
+create index if not exists tasks_expert_id_idx on public.tasks(expert_id);
+create index if not exists tasks_status_idx on public.tasks(status);
+
+-- Base table: admins only (experts must NOT read client_budget directly).
+drop policy if exists "tasks_admin_all" on public.tasks;
+create policy "tasks_admin_all" on public.tasks
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Experts read their tasks through this view, which omits client_budget.
+-- (Owned by postgres → bypasses base-table RLS; the WHERE enforces ownership.)
+create or replace view public.expert_tasks as
+  select id, order_id, title, description, status, deadline,
+         expert_budget, currency, created_at, expert_id
+  from public.tasks
+  where expert_id = auth.uid();
+grant select on public.expert_tasks to authenticated;
+
+-- Experts advance their own task status via this guarded RPC only.
+create or replace function public.set_task_status(p_task_id uuid, p_status text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_status not in ('in_progress','submitted') then
+    raise exception 'Experts may only set in_progress or submitted';
+  end if;
+  update public.tasks
+     set status = p_status
+   where id = p_task_id and expert_id = auth.uid();
+  if not found then
+    raise exception 'Task not found or not assigned to you';
+  end if;
+end;
+$$;
+grant execute on function public.set_task_status(uuid, text) to authenticated;
