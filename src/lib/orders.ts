@@ -118,3 +118,30 @@ export async function getOrder(id: string): Promise<Order> {
   const doc = await databases.getDocument(databaseId, ordersCollectionId, id);
   return doc as unknown as Order;
 }
+
+/** Admin: list every order across all clients, newest first. */
+export async function listAllOrders(status?: OrderStatus): Promise<Order[]> {
+  if (!isAppwriteConfigured) return [];
+  const queries = [Query.orderDesc("$createdAt"), Query.limit(200)];
+  if (status) queries.push(Query.equal("status", status));
+  const res = await databases.listDocuments(databaseId, ordersCollectionId, queries);
+  return res.documents as unknown as Order[];
+}
+
+/** Admin: update an order's status and/or payment flag. */
+export async function updateOrder(
+  id: string,
+  fields: Partial<Pick<Order, "status" | "paid">>
+): Promise<Order> {
+  const doc = await databases.updateDocument(databaseId, ordersCollectionId, id, fields);
+  return doc as unknown as Order;
+}
+
+/** The status an order advances to next (null if terminal). */
+export function nextStatus(status: OrderStatus): OrderStatus | null {
+  const order: OrderStatus[] = ["approved", "in_progress", "delivered", "completed"];
+  const idx = order.indexOf(status);
+  if (status === "pending") return "approved";
+  if (idx >= 0 && idx < order.length - 1) return order[idx + 1];
+  return null;
+}
