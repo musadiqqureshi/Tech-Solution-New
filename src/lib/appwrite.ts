@@ -13,6 +13,8 @@ export const appwriteConfig = {
     process.env.NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID ?? "profiles",
   contactsCollectionId:
     process.env.NEXT_PUBLIC_APPWRITE_CONTACTS_COLLECTION_ID ?? "contacts",
+  ordersCollectionId:
+    process.env.NEXT_PUBLIC_APPWRITE_ORDERS_COLLECTION_ID ?? "orders",
   expertsBucketId:
     process.env.NEXT_PUBLIC_APPWRITE_EXPERTS_BUCKET_ID ?? "experts",
   ownerEmail: process.env.NEXT_PUBLIC_OWNER_EMAIL ?? "",

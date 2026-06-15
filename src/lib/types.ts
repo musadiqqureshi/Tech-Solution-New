@@ -27,6 +27,35 @@ export interface ContactMessage {
   message: string;
 }
 
+export type Currency = "USD" | "PKR" | "GBP" | "EUR" | "AUD" | "CAD";
+
+export type OrderStatus =
+  | "pending"
+  | "approved"
+  | "in_progress"
+  | "delivered"
+  | "completed"
+  | "rejected";
+
+export interface Order {
+  $id?: string;
+  $createdAt?: string;
+  orderNumber: string;
+  clientId: string;
+  clientName: string;
+  clientEmail: string;
+  service: string;
+  title: string;
+  description: string;
+  requirements?: string;
+  budget?: number;
+  currency?: Currency;
+  status: OrderStatus;
+  paid?: boolean;
+  requirementFileIds?: string[];
+  deliverableFileIds?: string[];
+}
+
 export interface Expert {
   $id?: string;
   name: string;

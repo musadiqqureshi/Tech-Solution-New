@@ -109,6 +109,10 @@ const attr = {
     step(`attr ${cid}.${key}`, () =>
       databases.createDatetimeAttribute(DB_ID, cid, key, required)
     ),
+  float: (cid, key, required = false) =>
+    step(`attr ${cid}.${key}`, () =>
+      databases.createFloatAttribute(DB_ID, cid, key, required)
+    ),
 };
 
 const index = (cid, key, attributes, type = IndexType.Key) =>
@@ -215,6 +219,47 @@ async function main() {
   await attr.string("profiles", "phone", 32, false);
   await waitForAttributes("profiles");
   await index("profiles", "idx_userId", ["userId"], IndexType.Unique);
+
+  // ── orders ───────────────────────────────────────────────────────────────
+  console.log("\nCollection: orders");
+  await step("collection orders", () =>
+    databases.createCollection(
+      DB_ID,
+      "orders",
+      "Orders",
+      [
+        Permission.create(Role.users()), // any signed-in client can create
+        Permission.read(Role.team("admin")),
+        Permission.update(Role.team("admin")),
+        Permission.delete(Role.team("admin")),
+      ],
+      true // document-level security: clients see only their own orders
+    )
+  );
+  await attr.string("orders", "orderNumber", 32, true);
+  await attr.string("orders", "clientId", 64, true);
+  await attr.string("orders", "clientName", 128, true);
+  await attr.email("orders", "clientEmail", true);
+  await attr.string("orders", "service", 128, true);
+  await attr.string("orders", "title", 256, true);
+  await attr.string("orders", "description", 5000, true);
+  await attr.string("orders", "requirements", 5000, false);
+  await attr.float("orders", "budget", false);
+  await attr.enum("orders", "currency", ["USD", "PKR", "GBP", "EUR", "AUD", "CAD"], false);
+  await attr.enum(
+    "orders",
+    "status",
+    ["pending", "approved", "in_progress", "delivered", "completed", "rejected"],
+    false,
+    "pending"
+  );
+  await attr.bool("orders", "paid", false, false);
+  await attr.string("orders", "requirementFileIds", 64, false, true);
+  await attr.string("orders", "deliverableFileIds", 64, false, true);
+  await waitForAttributes("orders");
+  await index("orders", "idx_clientId", ["clientId"]);
+  await index("orders", "idx_status", ["status"]);
+  await index("orders", "idx_orderNumber", ["orderNumber"], IndexType.Unique);
 
   // ── Storage buckets ──────────────────────────────────────────────────────
   console.log("\nStorage buckets:");
