@@ -29,7 +29,31 @@ function rowToInvoice(r: Record<string, unknown>): Invoice {
     dueDate: (r.due_date as string) ?? undefined,
     source: (r.source as "manual" | "auto") ?? undefined,
     phase: (r.phase as InvoicePhase) ?? "full",
+    paymentProofUrl: (r.payment_proof_url as string) ?? undefined,
+    paymentSubmittedAt: (r.payment_submitted_at as string) ?? undefined,
   };
+}
+
+/**
+ * Client uploads a payment screenshot to storage, stores the public URL on
+ * the invoice, and notifies admins — all via the secure RPC.
+ */
+export async function submitPaymentProof(invoiceId: string, file: File): Promise<string> {
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${invoiceId}/${Date.now()}.${ext}`;
+  const up = await supabase.storage.from("payment-proofs").upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+  });
+  if (up.error) throw up.error;
+  const { data: pub } = supabase.storage.from("payment-proofs").getPublicUrl(path);
+  const url = pub.publicUrl;
+  const { error } = await supabase.rpc("submit_payment_proof", {
+    p_invoice_id: invoiceId,
+    p_url: url,
+  });
+  if (error) throw error;
+  return url;
 }
 
 /** Build the next invoice number: TSP-INV-YYYYMM-XXXX (resets monthly). */

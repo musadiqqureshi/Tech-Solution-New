@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X, Sparkles } from "lucide-react";
 import { NAV_LINKS, COMPANY } from "@/lib/constants";
 import { useAuth } from "@/context/AuthContext";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -50,6 +51,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden lg:flex items-center gap-3">
+          <ThemeToggle />
           {user ? (
             <Link href="/app" className="btn-primary !py-2 !px-5 text-sm">
               Dashboard

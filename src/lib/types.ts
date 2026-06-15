@@ -145,6 +145,8 @@ export interface Invoice {
   dueDate?: string;
   source?: "manual" | "auto";
   phase?: InvoicePhase;
+  paymentProofUrl?: string;
+  paymentSubmittedAt?: string;
 }
 
 export interface Review {

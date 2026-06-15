@@ -158,6 +158,7 @@ create table if not exists public.tasks (
   client_budget numeric,                 -- admin-only (profit source)
   currency      text check (currency in ('USD','PKR','GBP','EUR','AUD','CAD')),
   delivery_link text,
+  task_number   text,
   created_at    timestamptz not null default now()
 );
 alter table public.tasks enable row level security;
@@ -174,7 +175,7 @@ create policy "tasks_admin_all" on public.tasks
 -- (Owned by postgres → bypasses base-table RLS; the WHERE enforces ownership.)
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
-         expert_budget, currency, created_at, expert_id, delivery_link
+         expert_budget, currency, created_at, expert_id, delivery_link, task_number
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -313,7 +314,7 @@ alter table public.tasks  add column if not exists delivery_link text;
 -- Refresh the expert view to expose the delivery link (added at the end).
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
-         expert_budget, currency, created_at, expert_id, delivery_link
+         expert_budget, currency, created_at, expert_id, delivery_link, task_number
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -504,3 +505,38 @@ end $$;
 drop trigger if exists trg_task_update_notify on public.tasks;
 create trigger trg_task_update_notify after update on public.tasks
   for each row execute function public.on_task_update();
+
+-- ── Payment proof upload ─────────────────────────────────────────────────
+alter table public.invoices add column if not exists payment_proof_url text;
+alter table public.invoices add column if not exists payment_submitted_at timestamptz;
+
+-- Public storage bucket for payment screenshots.
+insert into storage.buckets (id, name, public)
+  values ('payment-proofs', 'payment-proofs', true)
+  on conflict (id) do nothing;
+
+drop policy if exists "payment_proofs_insert" on storage.objects;
+create policy "payment_proofs_insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'payment-proofs');
+
+drop policy if exists "payment_proofs_read" on storage.objects;
+create policy "payment_proofs_read" on storage.objects
+  for select using (bucket_id = 'payment-proofs');
+
+-- Client submits proof for their own invoice; admins get notified.
+create or replace function public.submit_payment_proof(p_invoice_id uuid, p_url text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_client uuid; v_name text; v_num text;
+begin
+  select client_id, client_name, invoice_number into v_client, v_name, v_num
+  from public.invoices where id = p_invoice_id;
+  if v_client is null or v_client <> auth.uid() then
+    raise exception 'Not your invoice';
+  end if;
+  update public.invoices
+     set payment_proof_url = p_url, payment_submitted_at = now()
+   where id = p_invoice_id;
+  perform public.notify_admins('invoice','Client uploaded a payment proof',
+    v_name || ' paid invoice ' || v_num, '/app/admin/invoices');
+end $$;
+grant execute on function public.submit_payment_proof(uuid, text) to authenticated;

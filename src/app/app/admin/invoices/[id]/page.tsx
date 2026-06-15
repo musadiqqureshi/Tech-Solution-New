@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Loader2, Download, Check, Ban } from "lucide-react";
+import { ArrowLeft, Loader2, Download, Check, Ban, Image as ImageIcon, ExternalLink } from "lucide-react";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { InvoiceDocument } from "@/components/app/InvoiceDocument";
 import { getInvoice, updateInvoiceStatus } from "@/lib/invoices";
@@ -62,6 +62,27 @@ export default function AdminInvoiceDetail() {
           </button>
         </div>
       </div>
+      {invoice.paymentProofUrl && (
+        <div className="no-print mt-5 max-w-3xl mx-auto">
+          <div className="glass-card p-6 border border-emerald-500/30">
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+              <ImageIcon size={16} className="text-emerald-400" /> Client Payment Proof
+            </h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Submitted {invoice.paymentSubmittedAt ? new Date(invoice.paymentSubmittedAt).toLocaleString() : ""}.
+              Verify it, then mark the invoice paid.
+            </p>
+            <a href={invoice.paymentProofUrl} target="_blank" rel="noopener noreferrer" className="block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={invoice.paymentProofUrl} alt="Payment proof" className="max-h-80 rounded-lg border border-white/10" />
+            </a>
+            <a href={invoice.paymentProofUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-aura-cyan hover:underline inline-flex items-center gap-1 mt-3">
+              <ExternalLink size={14} /> Open full size
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="mt-5 flex justify-center">
         <InvoiceDocument invoice={invoice} />
       </div>
