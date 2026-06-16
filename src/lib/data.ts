@@ -34,6 +34,42 @@ function rowToExpert(r: Record<string, unknown>): Expert {
   };
 }
 
+export interface UserProfile {
+  name: string;
+  email: string;
+  role: string;
+  company?: string;
+  phone?: string;
+}
+
+/** Load the signed-in user's profile row. */
+export async function getProfile(userId: string): Promise<UserProfile | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("name, email, role, company, phone")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as UserProfile) ?? null;
+}
+
+/** Update editable profile fields (name, company, phone). */
+export async function updateProfile(
+  userId: string,
+  fields: { name?: string; company?: string; phone?: string }
+): Promise<void> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      ...(fields.name !== undefined ? { name: fields.name } : {}),
+      company: fields.company ?? null,
+      phone: fields.phone ?? null,
+    })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
 /** Admin: every expert in the directory (visible or not). */
 export async function listAllExperts(): Promise<Expert[]> {
   if (!isSupabaseConfigured) return [];

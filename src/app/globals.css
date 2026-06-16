@@ -178,37 +178,53 @@ html.light .bg-aura-mesh {
 }
 html.light main .glass-card,
 html.light section .glass-card,
+html.light header .glass-card,
 html.light main .stat-card,
 html.light section .stat-card {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.08);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
-html.light main .text-white,
-html.light section .text-white { color: #0f172a !important; }
-html.light main .text-gray-300,
-html.light section .text-gray-300 { color: #374151 !important; }
-html.light main .text-gray-400,
-html.light section .text-gray-400 { color: #4b5563 !important; }
-html.light main .text-gray-500,
-html.light section .text-gray-500 { color: #6b7280 !important; }
-html.light main .text-gray-600,
-html.light section .text-gray-600 { color: #9ca3af !important; }
+/* Sub-panels (translucent white) → subtle light fill */
+html.light main .bg-white\/5,
+html.light section .bg-white\/5 { background: rgba(0, 0, 0, 0.04) !important; }
+html.light main .border-white\/10,
+html.light section .border-white\/10 { border-color: rgba(0, 0, 0, 0.1) !important; }
+
+/* Text colours in light content + the navbar header */
+html.light main .text-white, html.light section .text-white, html.light header .text-white { color: #0f172a !important; }
+html.light main .text-gray-100, html.light section .text-gray-100 { color: #1f2937 !important; }
+html.light main .text-gray-200, html.light section .text-gray-200,
+html.light header .text-gray-300 { color: #334155 !important; }
+html.light main .text-gray-300, html.light section .text-gray-300 { color: #374151 !important; }
+html.light main .text-gray-400, html.light section .text-gray-400 { color: #4b5563 !important; }
+html.light main .text-gray-500, html.light section .text-gray-500 { color: #6b7280 !important; }
+html.light main .text-gray-600, html.light section .text-gray-600 { color: #9ca3af !important; }
+
 /* Inputs in light content */
-html.light main input,
-html.light main textarea,
-html.light main select {
+html.light main input, html.light main textarea, html.light main select,
+html.light section input, html.light section textarea, html.light section select {
   background: #ffffff;
   color: #0f172a;
   border-color: rgba(0, 0, 0, 0.15);
 }
-html.light main input::placeholder,
-html.light main textarea::placeholder { color: #9ca3af; }
+html.light main input::placeholder, html.light main textarea::placeholder,
+html.light section input::placeholder { color: #9ca3af; }
+
+/* Secondary buttons need a visible outline on light backgrounds */
+html.light main .btn-secondary,
+html.light section .btn-secondary,
+html.light header .btn-secondary {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #0f172a !important;
+}
 /* Keep gradient button text white on its colored background */
-html.light main .btn-primary,
-html.light main .btn-gold,
-html.light section .btn-primary,
-html.light section .btn-gold { color: #ffffff !important; }
+html.light .btn-primary,
+html.light .btn-gold { color: #ffffff !important; }
+
+/* Navbar (transparent at top) — make brand + links readable on light */
+html.light header .text-white { color: #0f172a !important; }
 
 /* Respect users who prefer less motion — kills all animation cost for them. */
 @media (prefers-reduced-motion: reduce) {
