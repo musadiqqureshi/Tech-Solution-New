@@ -107,14 +107,20 @@ function AssignForm({
     description: "",
     requirements: "",
     requirementLink: "",
+    service: "",
     expertId: "",
     deadline: "",
+    salaried: false,
     expertBudget: "",
     clientBudget: "",
     currency: "USD" as Currency,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Show experts whose specialty matches the order's service; fall back to all.
+  const relevant = f.service ? experts.filter((e) => e.specialty === f.service) : [];
+  const expertOptions = relevant.length > 0 ? relevant : experts;
 
   // Selecting an order auto-fills task details (NOT client name or budget).
   const pickOrder = (orderId: string) => {
@@ -130,6 +136,8 @@ function AssignForm({
       description: o.description,
       requirements: o.requirements ?? "",
       requirementLink: o.requirementLink ?? "",
+      service: o.service ?? "",
+      expertId: "", // reset so the admin re-picks from the relevant experts
       currency: o.currency ?? s.currency,
       deadline: o.deadline ?? s.deadline,
     }));
@@ -151,7 +159,8 @@ function AssignForm({
         expertName: expert?.name,
         orderId: f.orderId || undefined,
         deadline: f.deadline || undefined,
-        expertBudget: f.expertBudget ? Number(f.expertBudget) : undefined,
+        salaried: f.salaried,
+        expertBudget: f.salaried ? undefined : f.expertBudget ? Number(f.expertBudget) : undefined,
         clientBudget: f.clientBudget ? Number(f.clientBudget) : undefined,
         currency: f.currency,
       });
@@ -181,14 +190,33 @@ function AssignForm({
       <textarea className={input} rows={2} placeholder="Requirements (optional)" value={f.requirements} onChange={(e) => setF({ ...f, requirements: e.target.value })} />
       <input className={input} placeholder="Requirement files / source link (GitHub/Drive/OneDrive)" value={f.requirementLink} onChange={(e) => setF({ ...f, requirementLink: e.target.value })} />
       <div className="grid sm:grid-cols-2 gap-4">
-        <select className={input} value={f.expertId} onChange={(e) => setF({ ...f, expertId: e.target.value })}>
-          <option value="">Select expert…</option>
-          {experts.map((x) => (<option key={x.id} value={x.id}>{x.name}</option>))}
-        </select>
+        <div>
+          <select className={input} value={f.expertId} onChange={(e) => setF({ ...f, expertId: e.target.value })}>
+            <option value="">Select expert…</option>
+            {expertOptions.map((x) => (
+              <option key={x.id} value={x.id}>{x.name}{x.specialty ? ` · ${x.specialty}` : ""}</option>
+            ))}
+          </select>
+          {f.service && (
+            <p className="text-[11px] text-gray-500 mt-1">
+              {relevant.length > 0
+                ? `Showing experts for ${f.service}`
+                : `No specialist for ${f.service} — showing all experts`}
+            </p>
+          )}
+        </div>
         <input className={input} type="date" value={f.deadline} onChange={(e) => setF({ ...f, deadline: e.target.value })} />
       </div>
+
+      <label className="flex items-center gap-2 text-sm text-gray-300">
+        <input type="checkbox" checked={f.salaried} onChange={(e) => setF({ ...f, salaried: e.target.checked })} />
+        Salaried expert (paid via payroll — no per-task budget)
+      </label>
+
       <div className="grid sm:grid-cols-3 gap-4">
-        <input className={input} type="number" placeholder="Expert budget" value={f.expertBudget} onChange={(e) => setF({ ...f, expertBudget: e.target.value })} />
+        {!f.salaried && (
+          <input className={input} type="number" placeholder="Expert budget" value={f.expertBudget} onChange={(e) => setF({ ...f, expertBudget: e.target.value })} />
+        )}
         <input className={input} type="number" placeholder="Client budget" value={f.clientBudget} onChange={(e) => setF({ ...f, clientBudget: e.target.value })} />
         <select className={input} value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value as Currency })}>
           {CURRENCIES.map((c) => (<option key={c.code} value={c.code}>{c.code}</option>))}

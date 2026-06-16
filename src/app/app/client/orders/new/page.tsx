@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Send } from "lucide-react";
+import { ArrowLeft, Loader2, Send, UploadCloud, FileText, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { createOrder, CURRENCIES } from "@/lib/orders";
+import { uploadAttachment } from "@/lib/attachments";
 import { SERVICES } from "@/lib/constants";
 import type { Currency } from "@/lib/types";
 
@@ -32,6 +33,7 @@ export default function NewOrder() {
   });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
 
   const set = (k: keyof typeof form) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -60,6 +62,12 @@ export default function NewOrder() {
         budget: form.budget ? Number(form.budget) : undefined,
         currency: form.currency,
       });
+      // Upload any requirement files now that we have the order id.
+      if (order.$id && files.length) {
+        for (const file of files) {
+          await uploadAttachment({ file, entityType: "order", entityId: order.$id, kind: "requirement", uploaderId: user.id }).catch(() => {});
+        }
+      }
       router.push(order.$id ? `/app/client/orders/${order.$id}` : "/app/client/orders");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create the order.");
@@ -132,6 +140,36 @@ export default function NewOrder() {
             Paste a GitHub repo, Google Drive, or OneDrive link with your requirement files.
           </span>
         </label>
+
+        <div className="block">
+          <span className={labelCls}>Upload requirement files (optional)</span>
+          <label className="mt-1.5 flex flex-col items-center justify-center cursor-pointer rounded-xl border-2 border-dashed border-white/15 hover:border-white/30 px-4 py-6 text-center transition-colors">
+            <UploadCloud size={22} className="text-aura-cyan mb-2" />
+            <span className="text-sm text-gray-300">Click to add files (designs, docs, references)</span>
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                setFiles((prev) => [...prev, ...Array.from(e.target.files ?? [])]);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          {files.length > 0 && (
+            <ul className="mt-2 space-y-1.5">
+              {files.map((f, i) => (
+                <li key={i} className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 rounded-lg px-3 py-2">
+                  <FileText size={14} className="text-gray-400 shrink-0" />
+                  <span className="truncate flex-1">{f.name}</span>
+                  <button type="button" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="text-gray-500 hover:text-white">
+                    <X size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <label className="block">
           <span className={labelCls}>Preferred deadline (optional)</span>

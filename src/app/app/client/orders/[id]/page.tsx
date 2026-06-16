@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Calendar, Tag, FileText, Download, ExternalLink, MessageCircle, Send, Check, Star } from "lucide-react";
+import { externalUrl } from "@/lib/url";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/app/ui";
@@ -130,21 +131,6 @@ export default function OrderDetail() {
               <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{order.requirements}</p>
             </div>
           )}
-          <div className="glass-card p-6">
-            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-              <Download size={16} className="text-aura-cyan" /> Final Delivery
-            </h3>
-            {order.deliveryLink ? (
-              <a href={order.deliveryLink} target="_blank" rel="noopener noreferrer" className="btn-primary !py-2 text-sm">
-                <ExternalLink size={15} /> Open / Download Delivery
-              </a>
-            ) : (
-              <p className="text-sm text-gray-500">
-                No delivery yet — your final files/link will appear here once the project is delivered.
-              </p>
-            )}
-          </div>
-
           {/* Requirement files (client uploads) */}
           {order.$id && (
             <Attachments
@@ -156,6 +142,22 @@ export default function OrderDetail() {
               emptyText="Upload your requirement files (designs, docs, references)."
             />
           )}
+
+          {/* Final delivery */}
+          <div className="glass-card p-6">
+            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+              <Download size={16} className="text-aura-cyan" /> Final Delivery
+            </h3>
+            {order.deliveryLink ? (
+              <a href={externalUrl(order.deliveryLink)} target="_blank" rel="noopener noreferrer" className="btn-primary !py-2 text-sm">
+                <ExternalLink size={15} /> Open / Download Delivery
+              </a>
+            ) : (
+              <p className="text-sm text-gray-500">
+                No delivery yet — your final files/link will appear here once the project is delivered.
+              </p>
+            )}
+          </div>
 
           {/* Delivery files (download) */}
           {order.$id && (
@@ -280,7 +282,7 @@ export default function OrderDetail() {
                 <ExternalLink size={16} className="text-aura-purple mt-0.5 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-[11px] uppercase tracking-widest text-gray-500">Requirement files</p>
-                  <a href={order.requirementLink} target="_blank" rel="noopener noreferrer" className="text-sm text-aura-cyan hover:underline break-all">
+                  <a href={externalUrl(order.requirementLink)} target="_blank" rel="noopener noreferrer" className="text-sm text-aura-cyan hover:underline break-all">
                     Open link
                   </a>
                 </div>

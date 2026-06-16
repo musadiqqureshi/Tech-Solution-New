@@ -164,6 +164,7 @@ create table if not exists public.tasks (
   delivery_notes text,
   revision_count int not null default 0,
   revision_link text,
+  salaried      boolean not null default false,
   created_at    timestamptz not null default now()
 );
 alter table public.tasks enable row level security;
@@ -176,6 +177,8 @@ alter table public.tasks add column if not exists requirement_link text;
 alter table public.tasks add column if not exists delivery_notes text;
 alter table public.tasks add column if not exists revision_count int not null default 0;
 alter table public.tasks add column if not exists revision_link text;
+alter table public.tasks add column if not exists salaried boolean not null default false;
+alter table public.profiles add column if not exists specialty text;
 
 create index if not exists tasks_expert_id_idx on public.tasks(expert_id);
 create index if not exists tasks_status_idx on public.tasks(status);
@@ -190,7 +193,7 @@ create policy "tasks_admin_all" on public.tasks
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
          expert_budget, currency, created_at, expert_id, delivery_link, task_number,
-         requirements, requirement_link, delivery_notes, revision_count, revision_link
+         requirements, requirement_link, delivery_notes, revision_count, revision_link, salaried
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -330,7 +333,7 @@ alter table public.tasks  add column if not exists delivery_link text;
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
          expert_budget, currency, created_at, expert_id, delivery_link, task_number,
-         requirements, requirement_link, delivery_notes, revision_count, revision_link
+         requirements, requirement_link, delivery_notes, revision_count, revision_link, salaried
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -501,7 +504,7 @@ alter table public.tasks  add column if not exists task_number text;
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
          expert_budget, currency, created_at, expert_id, delivery_link, task_number,
-         requirements, requirement_link, delivery_notes, revision_count, revision_link
+         requirements, requirement_link, delivery_notes, revision_count, revision_link, salaried
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -728,3 +731,26 @@ create policy "attachments_storage_read" on storage.objects
 drop policy if exists "attachments_storage_delete" on storage.objects;
 create policy "attachments_storage_delete" on storage.objects
   for delete to authenticated using (bucket_id = 'attachments');
+
+-- ── salaries (admin payroll for salaried experts) ─────────────────────────
+create table if not exists public.salaries (
+  id          uuid primary key default gen_random_uuid(),
+  expert_id   uuid not null references auth.users(id) on delete cascade,
+  expert_name text not null,
+  amount      numeric not null,
+  currency    text check (currency in ('USD','PKR','GBP','EUR','AUD','CAD')),
+  period      text not null,                 -- e.g. "2026-06"
+  paid        boolean not null default false,
+  note        text,
+  created_at  timestamptz not null default now()
+);
+alter table public.salaries enable row level security;
+create index if not exists salaries_expert_idx on public.salaries(expert_id);
+
+drop policy if exists "salaries_admin_all" on public.salaries;
+create policy "salaries_admin_all" on public.salaries
+  for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "salaries_expert_select" on public.salaries;
+create policy "salaries_expert_select" on public.salaries
+  for select using (expert_id = auth.uid() or public.is_admin());

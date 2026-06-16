@@ -8,6 +8,7 @@ import {
   Calendar, Wallet, User, ExternalLink, Link2, DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { externalUrl } from "@/lib/url";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { TaskBadge, TaskTimeline } from "@/components/app/TaskBits";
@@ -113,7 +114,7 @@ export default function AdminTaskDetail() {
               {busy === "revision" ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />} Send Revision Request
             </button>
             {task.status === "revision_requested" && task.revisionLink && (
-              <a href={task.revisionLink} target="_blank" rel="noopener noreferrer" className="text-xs text-aura-cyan hover:underline inline-flex items-center gap-1 mt-2">
+              <a href={externalUrl(task.revisionLink)} target="_blank" rel="noopener noreferrer" className="text-xs text-aura-cyan hover:underline inline-flex items-center gap-1 mt-2">
                 <ExternalLink size={13} /> Revised reference link sent to expert
               </a>
             )}
@@ -147,7 +148,7 @@ export default function AdminTaskDetail() {
           <div className="glass-card p-6">
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><Link2 size={16} className="text-aura-cyan" /> Final Delivery</h3>
             {task.deliveryLink ? (
-              <a href={task.deliveryLink} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-2 text-sm"><ExternalLink size={15} /> Open delivery</a>
+              <a href={externalUrl(task.deliveryLink)} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-2 text-sm"><ExternalLink size={15} /> Open delivery</a>
             ) : (
               <p className="text-sm text-gray-500">No delivery link submitted yet.</p>
             )}
@@ -191,7 +192,7 @@ export default function AdminTaskDetail() {
                 <Link2 size={16} className="text-aura-purple mt-0.5 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-[11px] uppercase tracking-widest text-gray-500">Requirement files</p>
-                  <a href={task.requirementLink} target="_blank" rel="noopener noreferrer" className="text-sm text-aura-cyan hover:underline break-all">Open link</a>
+                  <a href={externalUrl(task.requirementLink)} target="_blank" rel="noopener noreferrer" className="text-sm text-aura-cyan hover:underline break-all">Open link</a>
                 </div>
               </div>
             )}

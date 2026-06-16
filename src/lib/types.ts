@@ -109,6 +109,7 @@ export interface Task {
   deliveryNotes?: string;
   revisionCount?: number;
   revisionLink?: string;
+  salaried?: boolean;
 }
 
 /** An expert option for admin task assignment. */
@@ -116,6 +117,19 @@ export interface ExpertOption {
   id: string;
   name: string;
   email: string;
+  specialty?: string;
+}
+
+export interface Salary {
+  $id?: string;
+  expertId: string;
+  expertName: string;
+  amount: number;
+  currency?: Currency;
+  period: string;
+  paid: boolean;
+  note?: string;
+  createdAt?: string;
 }
 
 export type MeetingStatus = "requested" | "confirmed" | "declined" | "completed";

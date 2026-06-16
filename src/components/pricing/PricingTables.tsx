@@ -17,23 +17,23 @@ const PLANS: Plan[] = [
   {
     name: "Starter",
     blurb: "For small IT teams getting organized.",
-    monthly: 29,
+    monthly: 14.99,
     cta: { label: "Get Started", href: "/subscribe?plan=Starter" },
     features: [
       { label: "Up to 5 users", included: true },
       { label: "10 projects", included: true },
-      { label: "20 clients", included: true },
-      { label: "Basic task management", included: true },
-      { label: "Basic client portal", included: true },
-      { label: "Invoicing & payments", included: false },
-      { label: "Support tickets", included: false },
-      { label: "White-label & custom domain", included: false },
+      { label: "10 clients", included: true },
+      { label: "Task management", included: true },
+      { label: "Client portal", included: true },
+      { label: "Invoicing & payments", included: true },
+      { label: "Support tickets", included: true },
+      { label: "File management", included: true },
     ],
   },
   {
     name: "Professional",
     blurb: "For growing IT companies that bill clients.",
-    monthly: 99,
+    monthly: 98.99,
     highlight: true,
     cta: { label: "Get Started", href: "/subscribe?plan=Professional" },
     features: [
@@ -93,7 +93,8 @@ export default function PricingTables() {
 
       <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {PLANS.map((p) => {
-          const price = p.monthly == null ? null : yearly ? Math.round((p.monthly * YEARLY_MONTHS) / 12) : p.monthly;
+          const raw = p.monthly == null ? null : yearly ? (p.monthly * YEARLY_MONTHS) / 12 : p.monthly;
+          const price = raw == null ? null : Number.isInteger(raw) ? String(raw) : raw.toFixed(2);
           return (
             <div
               key={p.name}
@@ -116,8 +117,8 @@ export default function PricingTables() {
                     <span className="text-sm text-gray-400 mb-1.5">/ user-month</span>
                   </div>
                 )}
-                {price != null && yearly && (
-                  <p className="text-xs text-aura-cyan mt-1">Billed annually (${price * 12}/yr)</p>
+                {raw != null && yearly && (
+                  <p className="text-xs text-aura-cyan mt-1">Billed annually (${(raw * 12).toFixed(2)}/yr)</p>
                 )}
               </div>
 

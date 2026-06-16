@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, CalendarDays, Plus, X, CalendarPlus, Video } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { externalUrl } from "@/lib/url";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import {
@@ -82,7 +83,7 @@ export default function ClientMeetings() {
                       <CalendarPlus size={14} /> Add to Calendar
                     </a>
                     {m.meetingLink && (
-                      <a href={m.meetingLink} target="_blank" rel="noopener noreferrer" className="btn-primary !py-1.5 text-xs whitespace-nowrap">
+                      <a href={externalUrl(m.meetingLink)} target="_blank" rel="noopener noreferrer" className="btn-primary !py-1.5 text-xs whitespace-nowrap">
                         <Video size={14} /> Join
                       </a>
                     )}

@@ -7,6 +7,7 @@ import {
   ArrowLeft, Loader2, Check, X, Play, Truck, BadgeCheck,
   DollarSign, Calendar, Tag, User, Mail, Link2, MessageCircle, ExternalLink, Trash2,
 } from "lucide-react";
+import { externalUrl } from "@/lib/url";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { StatusBadge, StatusTimeline } from "@/components/app/OrderBits";
@@ -175,7 +176,7 @@ export default function AdminOrderDetail() {
             {busy === "delivery" ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Save
           </button>
           {order.deliveryLink && (
-            <a href={order.deliveryLink} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-2 text-sm">
+            <a href={externalUrl(order.deliveryLink)} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-2 text-sm">
               <ExternalLink size={15} /> Open
             </a>
           )}
@@ -209,7 +210,7 @@ export default function AdminOrderDetail() {
               <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
                 <Link2 size={15} className="text-aura-cyan" /> Requirement Files
               </h3>
-              <a href={order.requirementLink} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-2 text-sm">
+              <a href={externalUrl(order.requirementLink)} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-2 text-sm">
                 <ExternalLink size={15} /> Open client’s link
               </a>
             </div>

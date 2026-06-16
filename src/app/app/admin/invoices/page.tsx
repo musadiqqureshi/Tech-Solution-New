@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Plus, Wallet, FileText, Check, Ban, Zap, X, ArrowRight } from "lucide-react";
+import { Loader2, Plus, Wallet, FileText, Check, Ban, Zap, X, ArrowRight, Users, Trash2 } from "lucide-react";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { InvoiceBadge } from "@/components/app/InvoiceDocument";
@@ -10,7 +10,9 @@ import {
   listAllInvoices, createInvoice, generateFromOrder, updateInvoiceStatus,
 } from "@/lib/invoices";
 import { listAllOrders, CURRENCIES, formatMoney } from "@/lib/orders";
-import type { Invoice, Order, Currency } from "@/lib/types";
+import { listExperts } from "@/lib/tasks";
+import { listSalaries, addSalary, setSalaryPaid, deleteSalary } from "@/lib/salaries";
+import type { Invoice, Order, Currency, ExpertOption, Salary } from "@/lib/types";
 
 export default function AdminInvoices() {
   useRequireRole(["admin"]);
@@ -125,6 +127,8 @@ export default function AdminInvoices() {
           ))}
         </div>
       )}
+
+      <SalariesPanel />
     </>
   );
 }
@@ -221,6 +225,135 @@ function CreatePanel({ orders, onDone }: { orders: Order[]; onDone: () => void }
           <button onClick={manual} disabled={busy} className="btn-primary !py-2 text-sm">
             {busy ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />} Create Invoice
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SalariesPanel() {
+  const [experts, setExperts] = useState<ExpertOption[]>([]);
+  const [salaries, setSalaries] = useState<Salary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const [f, setF] = useState({ expertId: "", amount: "", currency: "USD" as Currency, period: thisMonth, note: "" });
+
+  const load = () =>
+    Promise.all([listExperts().catch(() => []), listSalaries().catch(() => [])]).then(([e, s]) => {
+      setExperts(e);
+      setSalaries(s);
+    });
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, []);
+
+  const add = async () => {
+    const expert = experts.find((x) => x.id === f.expertId);
+    if (!expert || !f.amount) return;
+    setBusy("add");
+    try {
+      const s = await addSalary({
+        expertId: expert.id,
+        expertName: expert.name,
+        amount: Number(f.amount),
+        currency: f.currency,
+        period: f.period,
+        note: f.note || undefined,
+      });
+      setSalaries((p) => [s, ...p]);
+      setF({ ...f, amount: "", note: "" });
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const togglePaid = async (s: Salary) => {
+    if (!s.$id) return;
+    setBusy(s.$id);
+    try {
+      const u = await setSalaryPaid(s.$id, !s.paid);
+      setSalaries((p) => p.map((x) => (x.$id === u.$id ? u : x)));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const remove = async (s: Salary) => {
+    if (!s.$id || !confirm(`Delete salary entry for ${s.expertName}?`)) return;
+    setBusy(s.$id);
+    try {
+      await deleteSalary(s.$id);
+      setSalaries((p) => p.filter((x) => x.$id !== s.$id));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const paidTotal = salaries.filter((s) => s.paid).reduce((a, s) => a + s.amount, 0);
+  const pendingTotal = salaries.filter((s) => !s.paid).reduce((a, s) => a + s.amount, 0);
+  const cur = salaries.find((s) => s.currency)?.currency;
+  const input = "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-aura-purple/50 outline-none";
+
+  return (
+    <div className="mt-10">
+      <div className="flex items-center gap-2 mb-4">
+        <Users size={18} className="text-aura-cyan" />
+        <h2 className="text-lg font-black text-white">Salary Management</h2>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
+        <div className="glass-card p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-widest">Paid Payroll</p>
+          <p className="text-xl font-black text-emerald-400">{formatMoney(paidTotal, cur)}</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-widest">Pending</p>
+          <p className="text-xl font-black text-amber-400">{formatMoney(pendingTotal, cur)}</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-widest">Entries</p>
+          <p className="text-xl font-black text-white">{salaries.length}</p>
+        </div>
+      </div>
+
+      <div className="glass-card p-5 mb-5 grid sm:grid-cols-5 gap-3">
+        <select className={input} value={f.expertId} onChange={(e) => setF({ ...f, expertId: e.target.value })}>
+          <option value="">Expert…</option>
+          {experts.map((x) => (<option key={x.id} value={x.id}>{x.name}</option>))}
+        </select>
+        <input className={input} type="number" placeholder="Amount" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
+        <select className={input} value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value as Currency })}>
+          {CURRENCIES.map((c) => (<option key={c.code} value={c.code}>{c.code}</option>))}
+        </select>
+        <input className={input} type="month" value={f.period} onChange={(e) => setF({ ...f, period: e.target.value })} />
+        <button onClick={add} disabled={busy === "add" || !f.expertId || !f.amount} className="btn-primary !py-2 text-sm">
+          {busy === "add" ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} Add
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="grid place-items-center py-8"><Loader2 size={22} className="animate-spin text-aura-cyan" /></div>
+      ) : salaries.length === 0 ? (
+        <p className="text-sm text-gray-500">No salary entries yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {salaries.map((s) => (
+            <div key={s.$id} className="glass-card p-4 flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white">{s.expertName}</p>
+                <p className="text-xs text-gray-500">{s.period}{s.note ? ` · ${s.note}` : ""}</p>
+              </div>
+              <span className="font-bold text-white shrink-0">{formatMoney(s.amount, s.currency)}</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${s.paid ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"}`}>
+                {s.paid ? "Paid" : "Pending"}
+              </span>
+              <button onClick={() => togglePaid(s)} disabled={!!busy} className="btn-secondary !p-2" title={s.paid ? "Mark pending" : "Mark paid"}>
+                {busy === s.$id ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+              </button>
+              <button onClick={() => remove(s)} disabled={!!busy} className="btn-secondary !p-2" title="Delete"><Trash2 size={13} /></button>
+            </div>
+          ))}
         </div>
       )}
     </div>

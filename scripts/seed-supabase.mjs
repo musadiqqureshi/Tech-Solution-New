@@ -47,11 +47,11 @@ const USERS = [
 ];
 
 const EXPERTS = [
-  { name: "Usman Tariq", role: "Backend Engineer", skills: ["Python", "Django", "AWS"] },
-  { name: "Sana Riaz", role: "Frontend Engineer", skills: ["React", "TypeScript", "Tailwind"] },
-  { name: "Kamran Aziz", role: "DevOps Engineer", skills: ["Docker", "Kubernetes", "CI/CD"] },
-  { name: "Nida Farooq", role: "Data Scientist", skills: ["Python", "Pandas", "ML"] },
-  { name: "Hamza Iqbal", role: "Mobile Engineer", skills: ["Flutter", "Kotlin", "Swift"] },
+  { name: "Usman Tariq", role: "Backend Engineer", skills: ["Python", "Django", "AWS"], specialty: "Software Development" },
+  { name: "Sana Riaz", role: "Frontend Engineer", skills: ["React", "TypeScript", "Tailwind"], specialty: "Web Development" },
+  { name: "Kamran Aziz", role: "DevOps Engineer", skills: ["Docker", "Kubernetes", "CI/CD"], specialty: "Software Development" },
+  { name: "Nida Farooq", role: "Data Scientist", skills: ["Python", "Pandas", "ML"], specialty: "AI Automation" },
+  { name: "Hamza Iqbal", role: "Mobile Engineer", skills: ["Flutter", "Kotlin", "Swift"], specialty: "Mobile Applications" },
 ];
 
 // Expert login accounts (so admins can assign tasks and experts can sign in).
@@ -59,6 +59,7 @@ const EXPERT_USERS = EXPERTS.map((e) => ({
   name: e.name,
   email: `${e.name.toLowerCase().replace(/\s+/g, ".")}@techsolutions.test`,
   role: "expert",
+  specialty: e.specialty,
 }));
 
 /** Find an existing auth user by email (paginates the admin list). */
@@ -97,6 +98,7 @@ async function ensureUser(u) {
     email: u.email,
     role: u.role,
     company: u.company ?? null,
+    specialty: u.specialty ?? null,
   });
   if (pErr) throw pErr;
 }

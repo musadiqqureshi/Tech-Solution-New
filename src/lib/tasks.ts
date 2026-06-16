@@ -24,9 +24,12 @@ export const TASK_FLOW: TaskStatus[] = [
   "completed",
 ];
 
-/** Profit is admin-only: client budget minus expert budget. */
+/** Profit is admin-only. Salaried experts have no per-task cost here
+ *  (their pay is handled via the salary system), so profit = client budget. */
 export function taskProfit(t: Task): number | null {
-  if (t.clientBudget == null || t.expertBudget == null) return null;
+  if (t.clientBudget == null) return null;
+  if (t.salaried) return t.clientBudget;
+  if (t.expertBudget == null) return null;
   return t.clientBudget - t.expertBudget;
 }
 
@@ -51,6 +54,7 @@ function rowToTask(r: Record<string, unknown>): Task {
     deliveryNotes: (r.delivery_notes as string) ?? undefined,
     revisionCount: r.revision_count != null ? Number(r.revision_count) : 0,
     revisionLink: (r.revision_link as string) ?? undefined,
+    salaried: Boolean(r.salaried),
   };
 }
 
@@ -66,6 +70,7 @@ export interface NewTaskInput {
   orderId?: string;
   requirements?: string;
   requirementLink?: string;
+  salaried?: boolean;
 }
 
 /** Build the next task serial: TSK-YYYYMM-XXXX (resets monthly). */
@@ -100,18 +105,46 @@ export async function createTask(input: NewTaskInput): Promise<Task> {
       expert_id: input.expertId,
       expert_name: input.expertName ?? null,
       deadline: input.deadline || null,
-      expert_budget: input.expertBudget ?? null,
+      expert_budget: input.salaried ? null : input.expertBudget ?? null,
       client_budget: input.clientBudget ?? null,
       currency: input.currency ?? null,
       order_id: input.orderId ?? null,
       requirements: input.requirements ?? null,
       requirement_link: input.requirementLink ?? null,
+      salaried: input.salaried ?? false,
       status: "assigned",
     })
     .select()
     .single();
   if (error) throw error;
-  return rowToTask(data);
+  const task = rowToTask(data);
+
+  // Copy the order's requirement files onto the task so the assigned expert
+  // can see them (experts can't read order attachments directly).
+  if (input.orderId && task.$id) {
+    const { data: me } = await supabase.auth.getUser();
+    const { data: reqFiles } = await supabase
+      .from("attachments")
+      .select("name,url,path,size,kind")
+      .eq("entity_type", "order")
+      .eq("entity_id", input.orderId)
+      .eq("kind", "requirement");
+    if (reqFiles && reqFiles.length && me.user) {
+      await supabase.from("attachments").insert(
+        reqFiles.map((f) => ({
+          uploaded_by: me.user!.id,
+          entity_type: "task",
+          entity_id: task.$id,
+          kind: "requirement",
+          name: f.name,
+          url: f.url,
+          path: f.path,
+          size: f.size,
+        }))
+      );
+    }
+  }
+  return task;
 }
 
 /** Admin: every task across all experts, newest first (includes financials). */
@@ -140,6 +173,13 @@ export async function updateTaskStatus(id: string, status: TaskStatus): Promise<
     .eq("id", id)
     .select()
     .single();
+  if (error) throw error;
+  return rowToTask(data);
+}
+
+/** Expert: a single assigned task via the financial-safe view. */
+export async function getExpertTask(id: string): Promise<Task> {
+  const { data, error } = await supabase.from("expert_tasks").select("*").eq("id", id).single();
   if (error) throw error;
   return rowToTask(data);
 }
@@ -179,7 +219,7 @@ export async function listExperts(): Promise<ExpertOption[]> {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, name, email")
+    .select("id, name, email, specialty")
     .eq("role", "expert")
     .order("name");
   if (error) throw error;
