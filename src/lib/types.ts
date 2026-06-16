@@ -108,6 +108,7 @@ export interface Task {
   requirementLink?: string;
   deliveryNotes?: string;
   revisionCount?: number;
+  revisionLink?: string;
 }
 
 /** An expert option for admin task assignment. */

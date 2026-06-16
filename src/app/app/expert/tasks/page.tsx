@@ -108,6 +108,22 @@ export default function ExpertTasks() {
                   </div>
                 </div>
 
+                {(t.status === "revision_requested" || t.status === "under_revision") && (
+                  <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-4">
+                    <p className="text-sm font-semibold text-red-300 flex items-center gap-2">
+                      <RotateCcw size={15} /> Revision needed{(t.revisionCount ?? 0) > 0 ? ` (round ${t.revisionCount})` : ""}
+                    </p>
+                    <p className="text-xs text-gray-300 mt-1">
+                      The admin requested changes — see the feedback below, update your delivery link, and resubmit.
+                    </p>
+                    {t.revisionLink && (
+                      <a href={t.revisionLink} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-1.5 text-xs mt-3">
+                        <ExternalLink size={14} /> Open revised reference / marked-up file
+                      </a>
+                    )}
+                  </div>
+                )}
+
                 <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap mb-4">
                   {t.description}
                 </p>

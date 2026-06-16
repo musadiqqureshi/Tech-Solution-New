@@ -50,6 +50,7 @@ function rowToTask(r: Record<string, unknown>): Task {
     requirementLink: (r.requirement_link as string) ?? undefined,
     deliveryNotes: (r.delivery_notes as string) ?? undefined,
     revisionCount: r.revision_count != null ? Number(r.revision_count) : 0,
+    revisionLink: (r.revision_link as string) ?? undefined,
   };
 }
 
@@ -194,12 +195,16 @@ export function expertNextStatus(status: TaskStatus): TaskStatus | null {
   return null;
 }
 
-/** Admin: send a task back to the expert with revision instructions. */
-export async function requestRevision(task: Task, instructions: string): Promise<Task> {
+/** Admin: send a task back to the expert with revision instructions + optional link. */
+export async function requestRevision(task: Task, instructions: string, revisionLink?: string): Promise<Task> {
   if (!task.$id) throw new Error("Missing task id");
   const { data, error } = await supabase
     .from("tasks")
-    .update({ status: "revision_requested", revision_count: (task.revisionCount ?? 0) + 1 })
+    .update({
+      status: "revision_requested",
+      revision_count: (task.revisionCount ?? 0) + 1,
+      revision_link: revisionLink || null,
+    })
     .eq("id", task.$id)
     .select()
     .single();

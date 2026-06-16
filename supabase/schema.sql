@@ -163,6 +163,7 @@ create table if not exists public.tasks (
   requirement_link text,
   delivery_notes text,
   revision_count int not null default 0,
+  revision_link text,
   created_at    timestamptz not null default now()
 );
 alter table public.tasks enable row level security;
@@ -174,6 +175,7 @@ alter table public.tasks add column if not exists requirements text;
 alter table public.tasks add column if not exists requirement_link text;
 alter table public.tasks add column if not exists delivery_notes text;
 alter table public.tasks add column if not exists revision_count int not null default 0;
+alter table public.tasks add column if not exists revision_link text;
 
 create index if not exists tasks_expert_id_idx on public.tasks(expert_id);
 create index if not exists tasks_status_idx on public.tasks(status);
@@ -188,7 +190,7 @@ create policy "tasks_admin_all" on public.tasks
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
          expert_budget, currency, created_at, expert_id, delivery_link, task_number,
-         requirements, requirement_link, delivery_notes, revision_count
+         requirements, requirement_link, delivery_notes, revision_count, revision_link
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -328,7 +330,7 @@ alter table public.tasks  add column if not exists delivery_link text;
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
          expert_budget, currency, created_at, expert_id, delivery_link, task_number,
-         requirements, requirement_link, delivery_notes, revision_count
+         requirements, requirement_link, delivery_notes, revision_count, revision_link
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -499,7 +501,7 @@ alter table public.tasks  add column if not exists task_number text;
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
          expert_budget, currency, created_at, expert_id, delivery_link, task_number,
-         requirements, requirement_link, delivery_notes, revision_count
+         requirements, requirement_link, delivery_notes, revision_count, revision_link
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;

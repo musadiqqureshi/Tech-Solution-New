@@ -29,6 +29,7 @@ export default function AdminTaskDetail() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [revText, setRevText] = useState("");
+  const [revLink, setRevLink] = useState("");
   const [followText, setFollowText] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -102,13 +103,19 @@ export default function AdminTaskDetail() {
           <div className="mt-4 pt-4 border-t border-white/5">
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Request Revision</label>
             <textarea value={revText} onChange={(e) => setRevText(e.target.value)} rows={2} placeholder="What needs to change? Be specific…" className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-aura-purple/50" />
+            <input value={revLink} onChange={(e) => setRevLink(e.target.value)} placeholder="Revised reference / marked-up file link (optional)" className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-aura-purple/50" />
             <button
-              onClick={() => revText.trim() && run("revision", async () => { const t = await requestRevision(task, revText.trim()); setRevText(""); return t; })}
+              onClick={() => revText.trim() && run("revision", async () => { const t = await requestRevision(task, revText.trim(), revLink.trim() || undefined); setRevText(""); setRevLink(""); return t; })}
               disabled={!!busy || !revText.trim()}
               className="btn-secondary !py-2 text-sm mt-2"
             >
               {busy === "revision" ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />} Send Revision Request
             </button>
+            {task.status === "revision_requested" && task.revisionLink && (
+              <a href={task.revisionLink} target="_blank" rel="noopener noreferrer" className="text-xs text-aura-cyan hover:underline inline-flex items-center gap-1 mt-2">
+                <ExternalLink size={13} /> Revised reference link sent to expert
+              </a>
+            )}
           </div>
         )}
 
