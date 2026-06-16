@@ -7,6 +7,7 @@ import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { TaskBadge, TaskTimeline } from "@/components/app/TaskBits";
 import FeedbackThread from "@/components/app/FeedbackThread";
+import Attachments from "@/components/app/Attachments";
 import { listExpertTasks, setMyTaskStatus, setMyTaskDelivery, expertNextStatus } from "@/lib/tasks";
 import { formatMoney } from "@/lib/orders";
 import type { Task } from "@/lib/types";
@@ -171,6 +172,13 @@ export default function ExpertTasks() {
                       : t.status === "delivered" ? "Delivered to the client."
                       : "Completed."}
                   </p>
+                )}
+
+                {/* Delivery files */}
+                {t.$id && (
+                  <div className="mt-5">
+                    <Attachments entityType="task" entityId={t.$id} kind="delivery" title="Delivery Files" canUpload emptyText="Upload your delivery files here (in addition to the link above)." />
+                  </div>
                 )}
 
                 {/* Feedback & communication */}

@@ -12,6 +12,7 @@ import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { TaskBadge, TaskTimeline } from "@/components/app/TaskBits";
 import FeedbackThread from "@/components/app/FeedbackThread";
+import Attachments from "@/components/app/Attachments";
 import {
   getTask, updateTaskStatus, requestRevision, deliverToClient, setTaskDeliveryNotes,
   adminNextStatus, taskProfit,
@@ -168,6 +169,10 @@ export default function AdminTaskDetail() {
               <h3 className="text-sm font-bold text-white mb-3">Requirements</h3>
               <p className="text-sm text-gray-300 whitespace-pre-wrap">{task.requirements}</p>
             </div>
+          )}
+
+          {task.$id && (
+            <Attachments entityType="task" entityId={task.$id} kind="delivery" title="Delivery Files" canUpload emptyText="No delivery files uploaded yet." />
           )}
 
           {task.$id && user && <FeedbackThread taskId={task.$id} me={{ id: user.id, role: "admin" }} />}

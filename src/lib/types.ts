@@ -134,6 +134,21 @@ export interface Meeting {
   meetingLink?: string;
 }
 
+export type AttachmentKind = "requirement" | "delivery" | "revision" | "general";
+
+export interface Attachment {
+  $id?: string;
+  uploadedBy: string;
+  entityType: "order" | "task";
+  entityId: string;
+  kind: AttachmentKind;
+  name: string;
+  url: string;
+  path: string;
+  size?: number;
+  createdAt: string;
+}
+
 export interface ChatMessage {
   $id?: string;
   peerId: string;

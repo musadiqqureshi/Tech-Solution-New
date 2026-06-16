@@ -12,6 +12,7 @@ import { getOrder, setOrderFollowUp, formatMoney } from "@/lib/orders";
 import { getMyOrderReview, submitReview } from "@/lib/reviews";
 import { listOrderInvoices } from "@/lib/invoices";
 import { InvoiceBadge } from "@/components/app/InvoiceDocument";
+import Attachments from "@/components/app/Attachments";
 import type { Order, Review, Invoice } from "@/lib/types";
 
 export default function OrderDetail() {
@@ -143,6 +144,29 @@ export default function OrderDetail() {
               </p>
             )}
           </div>
+
+          {/* Requirement files (client uploads) */}
+          {order.$id && (
+            <Attachments
+              entityType="order"
+              entityId={order.$id}
+              kind="requirement"
+              title="Requirement Files"
+              canUpload
+              emptyText="Upload your requirement files (designs, docs, references)."
+            />
+          )}
+
+          {/* Delivery files (download) */}
+          {order.$id && (
+            <Attachments
+              entityType="order"
+              entityId={order.$id}
+              kind="delivery"
+              title="Delivery Files"
+              emptyText="Your delivered files will appear here."
+            />
+          )}
 
           {/* Invoices */}
           {invoices.length > 0 && (

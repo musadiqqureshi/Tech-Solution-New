@@ -665,3 +665,66 @@ end $$;
 drop trigger if exists trg_feedback_notify on public.task_feedback;
 create trigger trg_feedback_notify after insert on public.task_feedback
   for each row execute function public.on_feedback_insert();
+
+-- ── File attachments (Supabase Storage) ──────────────────────────────────
+create or replace function public.owns_order(p_order_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.orders where id = p_order_id and client_id = auth.uid());
+$$;
+
+create table if not exists public.attachments (
+  id          uuid primary key default gen_random_uuid(),
+  uploaded_by uuid not null references auth.users(id) on delete cascade,
+  entity_type text not null check (entity_type in ('order','task')),
+  entity_id   uuid not null,
+  kind        text not null default 'general'
+              check (kind in ('requirement','delivery','revision','general')),
+  name        text not null,
+  url         text not null,
+  path        text not null,
+  size        bigint,
+  created_at  timestamptz not null default now()
+);
+alter table public.attachments enable row level security;
+create index if not exists attachments_entity_idx on public.attachments(entity_type, entity_id);
+
+-- Visibility: admins all; order files to that order's client; task files to the
+-- assigned expert. (Uploaders are covered by the owns_* / is_admin checks too.)
+drop policy if exists "attachments_select" on public.attachments;
+create policy "attachments_select" on public.attachments
+  for select using (
+    public.is_admin()
+    or (entity_type = 'order' and public.owns_order(entity_id))
+    or (entity_type = 'task' and public.owns_task(entity_id))
+  );
+
+drop policy if exists "attachments_insert" on public.attachments;
+create policy "attachments_insert" on public.attachments
+  for insert with check (
+    uploaded_by = auth.uid() and (
+      public.is_admin()
+      or (entity_type = 'order' and public.owns_order(entity_id))
+      or (entity_type = 'task' and public.owns_task(entity_id))
+    )
+  );
+
+drop policy if exists "attachments_delete" on public.attachments;
+create policy "attachments_delete" on public.attachments
+  for delete using (uploaded_by = auth.uid() or public.is_admin());
+
+-- Public storage bucket for attachments (paths carry UUIDs).
+insert into storage.buckets (id, name, public)
+  values ('attachments', 'attachments', true)
+  on conflict (id) do nothing;
+
+drop policy if exists "attachments_storage_insert" on storage.objects;
+create policy "attachments_storage_insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'attachments');
+
+drop policy if exists "attachments_storage_read" on storage.objects;
+create policy "attachments_storage_read" on storage.objects
+  for select using (bucket_id = 'attachments');
+
+drop policy if exists "attachments_storage_delete" on storage.objects;
+create policy "attachments_storage_delete" on storage.objects
+  for delete to authenticated using (bucket_id = 'attachments');

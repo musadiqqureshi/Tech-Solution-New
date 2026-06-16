@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/app/ui";
 import { StatusBadge, StatusTimeline } from "@/components/app/OrderBits";
 import { getOrder, updateOrder, setOrderDelivery, deleteOrder, nextStatus, formatMoney } from "@/lib/orders";
 import { generatePhaseInvoice } from "@/lib/invoices";
+import Attachments from "@/components/app/Attachments";
 import type { Order, OrderStatus } from "@/lib/types";
 
 const ADVANCE_LABEL: Partial<Record<OrderStatus, { label: string; icon: typeof Play }>> = {
@@ -212,6 +213,12 @@ export default function AdminOrderDetail() {
                 <ExternalLink size={15} /> Open client’s link
               </a>
             </div>
+          )}
+          {order.$id && (
+            <Attachments entityType="order" entityId={order.$id} kind="requirement" title="Requirement Files" emptyText="The client hasn’t uploaded requirement files." />
+          )}
+          {order.$id && (
+            <Attachments entityType="order" entityId={order.$id} kind="delivery" title="Delivery Files" canUpload emptyText="Upload the final files to deliver to the client." />
           )}
         </div>
         <div className="space-y-3">
