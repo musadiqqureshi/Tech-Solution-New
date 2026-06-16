@@ -248,9 +248,9 @@ export const FALLBACK_EXPERTS = [
 ];
 
 export const NAV_LINKS = [
-  { label: "Services", href: "#services" },
-  { label: "Portfolio", href: "#portfolio" },
-  { label: "Testimonials", href: "#testimonials" },
-  { label: "Team", href: "#team" },
-  { label: "Contact", href: "#contact" },
+  { label: "Services", href: "/#services" },
+  { label: "Portfolio", href: "/#portfolio" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Team", href: "/#team" },
+  { label: "Contact", href: "/#contact" },
 ];

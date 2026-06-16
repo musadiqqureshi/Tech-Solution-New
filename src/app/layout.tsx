@@ -63,6 +63,40 @@ export default function RootLayout({
             __html: `try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}`,
           }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: COMPANY.name,
+              alternateName: COMPANY.shortName,
+              url,
+              logo: `${url}/icon.svg`,
+              email: COMPANY.email,
+              telephone: COMPANY.phone,
+              description:
+                "Premium digital agency delivering enterprise software, web & mobile development, big data, and AI automation, plus a SaaS platform for IT companies.",
+              address: {
+                "@type": "PostalAddress",
+                addressLocality: "Lahore",
+                addressRegion: "Punjab",
+                addressCountry: "PK",
+              },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: COMPANY.name,
+              url,
+            }),
+          }}
+        />
       </head>
       <body>
         <ThemeProvider>
