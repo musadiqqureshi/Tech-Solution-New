@@ -159,9 +159,21 @@ create table if not exists public.tasks (
   currency      text check (currency in ('USD','PKR','GBP','EUR','AUD','CAD')),
   delivery_link text,
   task_number   text,
+  requirements  text,
+  requirement_link text,
+  delivery_notes text,
+  revision_count int not null default 0,
   created_at    timestamptz not null default now()
 );
 alter table public.tasks enable row level security;
+
+-- Ensure new columns exist on pre-existing tables (idempotent, before views).
+alter table public.tasks add column if not exists delivery_link text;
+alter table public.tasks add column if not exists task_number text;
+alter table public.tasks add column if not exists requirements text;
+alter table public.tasks add column if not exists requirement_link text;
+alter table public.tasks add column if not exists delivery_notes text;
+alter table public.tasks add column if not exists revision_count int not null default 0;
 
 create index if not exists tasks_expert_id_idx on public.tasks(expert_id);
 create index if not exists tasks_status_idx on public.tasks(status);
@@ -175,7 +187,8 @@ create policy "tasks_admin_all" on public.tasks
 -- (Owned by postgres → bypasses base-table RLS; the WHERE enforces ownership.)
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
-         expert_budget, currency, created_at, expert_id, delivery_link, task_number
+         expert_budget, currency, created_at, expert_id, delivery_link, task_number,
+         requirements, requirement_link, delivery_notes, revision_count
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -314,7 +327,8 @@ alter table public.tasks  add column if not exists delivery_link text;
 -- Refresh the expert view to expose the delivery link (added at the end).
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
-         expert_budget, currency, created_at, expert_id, delivery_link, task_number
+         expert_budget, currency, created_at, expert_id, delivery_link, task_number,
+         requirements, requirement_link, delivery_notes, revision_count
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -484,7 +498,8 @@ alter table public.tasks  add column if not exists task_number text;
 -- expose task_number + delivery_link to experts
 create or replace view public.expert_tasks as
   select id, order_id, title, description, status, deadline,
-         expert_budget, currency, created_at, expert_id, delivery_link, task_number
+         expert_budget, currency, created_at, expert_id, delivery_link, task_number,
+         requirements, requirement_link, delivery_notes, revision_count
   from public.tasks
   where expert_id = auth.uid();
 grant select on public.expert_tasks to authenticated;
@@ -540,3 +555,111 @@ begin
     v_name || ' paid invoice ' || v_num, '/app/admin/invoices');
 end $$;
 grant execute on function public.submit_payment_proof(uuid, text) to authenticated;
+
+-- ── Task workflow overhaul: statuses, fields, feedback ────────────────────
+alter table public.tasks add column if not exists requirements text;
+alter table public.tasks add column if not exists requirement_link text;
+alter table public.tasks add column if not exists delivery_notes text;
+alter table public.tasks add column if not exists revision_count int not null default 0;
+
+-- Expanded status set.
+alter table public.tasks drop constraint if exists tasks_status_check;
+alter table public.tasks add constraint tasks_status_check
+  check (status in ('assigned','in_progress','submitted','revision_requested',
+                    'under_revision','approved','delivered','completed'));
+
+-- Helper: does the caller own this task? (definer → safe in RLS)
+create or replace function public.owns_task(p_task_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.tasks where id = p_task_id and expert_id = auth.uid());
+$$;
+
+-- Per-task feedback / communication thread.
+create table if not exists public.task_feedback (
+  id          uuid primary key default gen_random_uuid(),
+  task_id     uuid not null references public.tasks(id) on delete cascade,
+  author_id   uuid not null references auth.users(id) on delete cascade,
+  author_role text not null check (author_role in ('admin','expert')),
+  kind        text not null default 'message'
+              check (kind in ('message','revision','follow_up','response')),
+  body        text not null,
+  created_at  timestamptz not null default now()
+);
+alter table public.task_feedback enable row level security;
+create index if not exists task_feedback_task_idx on public.task_feedback(task_id, created_at);
+
+drop policy if exists "task_feedback_select" on public.task_feedback;
+create policy "task_feedback_select" on public.task_feedback
+  for select using (public.is_admin() or public.owns_task(task_id));
+
+drop policy if exists "task_feedback_insert" on public.task_feedback;
+create policy "task_feedback_insert" on public.task_feedback
+  for insert with check (
+    author_id = auth.uid() and (public.is_admin() or public.owns_task(task_id))
+  );
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables
+    where pubname='supabase_realtime' and schemaname='public' and tablename='task_feedback') then
+    alter publication supabase_realtime add table public.task_feedback;
+  end if;
+end $$;
+
+-- Expert resubmission allowed via guarded RPC.
+create or replace function public.set_task_status(p_task_id uuid, p_status text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_status not in ('in_progress','submitted','under_revision') then
+    raise exception 'Experts may only set in_progress, submitted, or under_revision';
+  end if;
+  update public.tasks set status = p_status
+   where id = p_task_id and expert_id = auth.uid();
+  if not found then raise exception 'Task not found or not assigned to you'; end if;
+end $$;
+grant execute on function public.set_task_status(uuid, text) to authenticated;
+
+-- Extend task update notifications (submit / revision / approved / delivered).
+create or replace function public.on_task_update()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if NEW.status is distinct from OLD.status then
+    if NEW.status = 'submitted' then
+      perform public.notify_admins('task','Expert submitted a final delivery — please review',
+        coalesce(NEW.task_number||' · ','')||NEW.title, '/app/admin/tasks/'||NEW.id);
+    elsif NEW.status = 'revision_requested' then
+      insert into public.notifications(user_id,type,title,body,link)
+      values (NEW.expert_id,'task','Revision requested',NEW.title,'/app/expert/tasks');
+    elsif NEW.status = 'approved' then
+      insert into public.notifications(user_id,type,title,body,link)
+      values (NEW.expert_id,'task','Your task was approved',NEW.title,'/app/expert/tasks');
+    elsif NEW.status = 'delivered' then
+      insert into public.notifications(user_id,type,title,body,link)
+      values (NEW.expert_id,'task','Task delivered to client',NEW.title,'/app/expert/tasks');
+    end if;
+  end if;
+  if NEW.delivery_link is distinct from OLD.delivery_link and NEW.delivery_link is not null then
+    perform public.notify_admins('task','Expert attached a delivery link', NEW.title, '/app/admin/tasks/'||NEW.id);
+  end if;
+  return NEW;
+end $$;
+
+-- Notify the other party when feedback is posted.
+create or replace function public.on_feedback_insert()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_expert uuid; v_title text;
+begin
+  select expert_id, title into v_expert, v_title from public.tasks where id = NEW.task_id;
+  if NEW.author_role = 'admin' then
+    insert into public.notifications(user_id,type,title,body,link)
+    values (v_expert,'task',
+      case NEW.kind when 'follow_up' then 'Follow-up request' when 'revision' then 'Revision feedback' else 'New feedback on your task' end,
+      v_title, '/app/expert/tasks');
+  else
+    perform public.notify_admins('task','Expert replied on a task', v_title, '/app/admin/tasks');
+  end if;
+  return NEW;
+end $$;
+drop trigger if exists trg_feedback_notify on public.task_feedback;
+create trigger trg_feedback_notify after insert on public.task_feedback
+  for each row execute function public.on_feedback_insert();

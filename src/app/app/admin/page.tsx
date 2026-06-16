@@ -142,10 +142,20 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Reviews moderation */}
+          {/* Reviews moderation + analytics */}
           {reviews.length > 0 && (
             <div className="glass-card p-6 mb-8">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">Reviews</h2>
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Reviews</h2>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-gray-400">{reviews.length} total</span>
+                  <span className="flex items-center gap-1.5 text-white font-semibold">
+                    <Star size={14} className="text-aura-gold fill-aura-gold" />
+                    {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)} avg
+                  </span>
+                  <span className="text-gray-400">{reviews.filter((r) => r.approved).length} featured</span>
+                </div>
+              </div>
               <div className="space-y-3">
                 {reviews.slice(0, 6).map((r) => (
                   <div key={r.$id} className="flex items-start gap-3 border-b border-white/5 pb-3 last:border-0">

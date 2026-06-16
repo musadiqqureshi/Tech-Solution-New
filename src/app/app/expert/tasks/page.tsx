@@ -1,16 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ListTodo, Play, Send, Calendar, Wallet, Link2, Check } from "lucide-react";
+import { Loader2, ListTodo, Play, Send, Calendar, Wallet, Link2, Check, RotateCcw, ExternalLink } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { TaskBadge, TaskTimeline } from "@/components/app/TaskBits";
+import FeedbackThread from "@/components/app/FeedbackThread";
 import { listExpertTasks, setMyTaskStatus, setMyTaskDelivery, expertNextStatus } from "@/lib/tasks";
 import { formatMoney } from "@/lib/orders";
 import type { Task } from "@/lib/types";
 
+const ACTION: Record<string, { label: string; icon: typeof Play }> = {
+  in_progress: { label: "Start Working", icon: Play },
+  under_revision: { label: "Start Revision", icon: RotateCcw },
+  submitted: { label: "Submit for Review", icon: Send },
+};
+
 export default function ExpertTasks() {
   useRequireRole(["expert", "admin"]);
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -99,9 +108,21 @@ export default function ExpertTasks() {
                   </div>
                 </div>
 
-                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap mb-5">
+                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap mb-4">
                   {t.description}
                 </p>
+
+                {t.requirements && (
+                  <div className="mb-4 rounded-lg bg-white/5 border border-white/10 p-3">
+                    <p className="text-[11px] uppercase tracking-widest text-gray-500 mb-1">Requirements</p>
+                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{t.requirements}</p>
+                  </div>
+                )}
+                {t.requirementLink && (
+                  <a href={t.requirementLink} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-1.5 text-xs mb-4">
+                    <ExternalLink size={14} /> Open requirement files
+                  </a>
+                )}
 
                 <div className="mb-5">
                   <TaskTimeline status={t.status} />
@@ -124,23 +145,23 @@ export default function ExpertTasks() {
 
                 {next ? (
                   <button onClick={() => act(t)} disabled={!!busy} className="btn-primary !py-2 text-sm">
-                    {busy === t.$id ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : next === "in_progress" ? (
-                      <Play size={16} />
-                    ) : (
-                      <Send size={16} />
-                    )}
-                    {next === "in_progress" ? "Start Working" : "Submit for Review"}
+                    {busy === t.$id ? <Loader2 size={16} className="animate-spin" /> : (() => { const A = ACTION[next].icon; return <A size={16} />; })()}
+                    {ACTION[next].label}
                   </button>
                 ) : (
                   <p className="text-xs text-gray-500">
-                    {t.status === "submitted"
-                      ? "Awaiting admin review."
-                      : t.status === "approved"
-                      ? "Approved — awaiting completion."
+                    {t.status === "submitted" ? "Submitted — awaiting admin review."
+                      : t.status === "approved" ? "Approved — awaiting delivery."
+                      : t.status === "delivered" ? "Delivered to the client."
                       : "Completed."}
                   </p>
+                )}
+
+                {/* Feedback & communication */}
+                {t.$id && user && (
+                  <div className="mt-5">
+                    <FeedbackThread taskId={t.$id} me={{ id: user.id, role: "expert" }} />
+                  </div>
                 )}
               </div>
             );

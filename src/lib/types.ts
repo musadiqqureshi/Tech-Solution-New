@@ -73,8 +73,21 @@ export type TaskStatus =
   | "assigned"
   | "in_progress"
   | "submitted"
+  | "revision_requested"
+  | "under_revision"
   | "approved"
+  | "delivered"
   | "completed";
+
+export interface TaskFeedback {
+  $id?: string;
+  taskId: string;
+  authorId: string;
+  authorRole: "admin" | "expert";
+  kind: "message" | "revision" | "follow_up" | "response";
+  body: string;
+  createdAt: string;
+}
 
 export interface Task {
   $id?: string;
@@ -91,6 +104,10 @@ export interface Task {
   clientBudget?: number; // admin-only (profit source)
   currency?: Currency;
   deliveryLink?: string;
+  requirements?: string;
+  requirementLink?: string;
+  deliveryNotes?: string;
+  revisionCount?: number;
 }
 
 /** An expert option for admin task assignment. */

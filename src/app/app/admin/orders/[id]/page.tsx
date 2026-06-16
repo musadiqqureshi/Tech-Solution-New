@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft, Loader2, Check, X, Play, Truck, BadgeCheck,
-  DollarSign, Calendar, Tag, User, Mail, Link2, MessageCircle, ExternalLink,
+  DollarSign, Calendar, Tag, User, Mail, Link2, MessageCircle, ExternalLink, Trash2,
 } from "lucide-react";
 import { useRequireRole } from "@/components/app/PortalGuard";
 import { PageHeader } from "@/components/app/ui";
 import { StatusBadge, StatusTimeline } from "@/components/app/OrderBits";
-import { getOrder, updateOrder, setOrderDelivery, nextStatus, formatMoney } from "@/lib/orders";
+import { getOrder, updateOrder, setOrderDelivery, deleteOrder, nextStatus, formatMoney } from "@/lib/orders";
 import { generatePhaseInvoice } from "@/lib/invoices";
 import type { Order, OrderStatus } from "@/lib/types";
 
@@ -24,11 +24,25 @@ const ADVANCE_LABEL: Partial<Record<OrderStatus, { label: string; icon: typeof P
 export default function AdminOrderDetail() {
   useRequireRole(["admin"]);
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [delivery, setDelivery] = useState("");
+
+  const remove = async () => {
+    if (!order?.$id || !confirm(`Permanently delete order ${order.orderNumber}? This cannot be undone.`)) return;
+    setBusy("delete");
+    setError("");
+    try {
+      await deleteOrder(order.$id);
+      router.push("/app/admin/orders");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed.");
+      setBusy("");
+    }
+  };
 
   useEffect(() => {
     if (!params.id) return;
@@ -131,6 +145,9 @@ export default function AdminOrderDetail() {
               {busy === "reopen" ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} Reopen
             </button>
           )}
+          <button onClick={remove} disabled={!!busy} className="btn-secondary !py-2 text-sm text-red-300 hover:!text-red-200 ml-auto">
+            {busy === "delete" ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />} Delete
+          </button>
         </div>
         {error && <p className="text-sm text-red-400 mt-3">{error}</p>}
       </div>

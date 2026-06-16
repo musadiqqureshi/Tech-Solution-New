@@ -7,9 +7,12 @@ export const TASK_STATUS_META: Record<
 > = {
   assigned: { label: "Assigned", color: "#fbbf24", step: 0 },
   in_progress: { label: "In Progress", color: "#a78bfa", step: 1 },
-  submitted: { label: "Submitted", color: "#22d3ee", step: 2 },
+  submitted: { label: "Submitted for Review", color: "#22d3ee", step: 2 },
+  revision_requested: { label: "Revision Requested", color: "#f87171", step: 2 },
+  under_revision: { label: "Under Revision", color: "#fb923c", step: 1 },
   approved: { label: "Approved", color: "#60a5fa", step: 3 },
-  completed: { label: "Completed", color: "#34d399", step: 4 },
+  delivered: { label: "Delivered to Client", color: "#818cf8", step: 4 },
+  completed: { label: "Completed", color: "#34d399", step: 5 },
 };
 
 export const TASK_FLOW: TaskStatus[] = [
@@ -17,6 +20,7 @@ export const TASK_FLOW: TaskStatus[] = [
   "in_progress",
   "submitted",
   "approved",
+  "delivered",
   "completed",
 ];
 
@@ -42,6 +46,10 @@ function rowToTask(r: Record<string, unknown>): Task {
     clientBudget: r.client_budget != null ? Number(r.client_budget) : undefined,
     currency: (r.currency as Currency) ?? undefined,
     deliveryLink: (r.delivery_link as string) ?? undefined,
+    requirements: (r.requirements as string) ?? undefined,
+    requirementLink: (r.requirement_link as string) ?? undefined,
+    deliveryNotes: (r.delivery_notes as string) ?? undefined,
+    revisionCount: r.revision_count != null ? Number(r.revision_count) : 0,
   };
 }
 
@@ -55,6 +63,8 @@ export interface NewTaskInput {
   clientBudget?: number;
   currency?: Currency;
   orderId?: string;
+  requirements?: string;
+  requirementLink?: string;
 }
 
 /** Build the next task serial: TSK-YYYYMM-XXXX (resets monthly). */
@@ -93,6 +103,8 @@ export async function createTask(input: NewTaskInput): Promise<Task> {
       client_budget: input.clientBudget ?? null,
       currency: input.currency ?? null,
       order_id: input.orderId ?? null,
+      requirements: input.requirements ?? null,
+      requirement_link: input.requirementLink ?? null,
       status: "assigned",
     })
     .select()
@@ -177,12 +189,62 @@ export async function listExperts(): Promise<ExpertOption[]> {
 export function expertNextStatus(status: TaskStatus): TaskStatus | null {
   if (status === "assigned") return "in_progress";
   if (status === "in_progress") return "submitted";
+  if (status === "revision_requested") return "under_revision";
+  if (status === "under_revision") return "submitted";
   return null;
+}
+
+/** Admin: send a task back to the expert with revision instructions. */
+export async function requestRevision(task: Task, instructions: string): Promise<Task> {
+  if (!task.$id) throw new Error("Missing task id");
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ status: "revision_requested", revision_count: (task.revisionCount ?? 0) + 1 })
+    .eq("id", task.$id)
+    .select()
+    .single();
+  if (error) throw error;
+  // Record the instructions in the task feedback thread.
+  const { data: auth } = await supabase.auth.getUser();
+  await supabase.from("task_feedback").insert({
+    task_id: task.$id,
+    author_id: auth.user?.id,
+    author_role: "admin",
+    kind: "revision",
+    body: instructions,
+  });
+  return rowToTask(data);
+}
+
+/** Admin: deliver an approved task's work to the client's order. */
+export async function deliverToClient(task: Task): Promise<Task> {
+  if (!task.$id) throw new Error("Missing task id");
+  if (task.orderId) {
+    await supabase
+      .from("orders")
+      .update({ delivery_link: task.deliveryLink ?? null, status: "delivered" })
+      .eq("id", task.orderId);
+  }
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ status: "delivered" })
+    .eq("id", task.$id)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToTask(data);
+}
+
+/** Admin: set delivery notes on a task. */
+export async function setTaskDeliveryNotes(id: string, notes: string): Promise<void> {
+  const { error } = await supabase.from("tasks").update({ delivery_notes: notes }).eq("id", id);
+  if (error) throw error;
 }
 
 /** Next status for an admin acting on a task (null if terminal/expert-owned). */
 export function adminNextStatus(status: TaskStatus): TaskStatus | null {
   if (status === "submitted") return "approved";
-  if (status === "approved") return "completed";
+  if (status === "approved") return "delivered";
+  if (status === "delivered") return "completed";
   return null;
 }

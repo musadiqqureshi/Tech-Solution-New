@@ -202,6 +202,12 @@ export async function setOrderFollowUp(id: string, followUp: string): Promise<Or
   return rowToOrder(data);
 }
 
+/** Admin: permanently delete an order (linked invoices/tasks keep, unlinked). */
+export async function deleteOrder(id: string): Promise<void> {
+  const { error } = await supabase.from("orders").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /** The status an order advances to next (null if terminal). */
 export function nextStatus(status: OrderStatus): OrderStatus | null {
   const order: OrderStatus[] = ["approved", "in_progress", "delivered", "completed"];
