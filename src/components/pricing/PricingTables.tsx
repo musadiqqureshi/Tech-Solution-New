@@ -18,7 +18,7 @@ const PLANS: Plan[] = [
     name: "Starter",
     blurb: "For small IT teams getting organized.",
     monthly: 14.99,
-    cta: { label: "Get Started", href: "/subscribe?plan=Starter" },
+    cta: { label: "Get Started", href: "/company-register?plan=starter" },
     features: [
       { label: "Up to 5 users", included: true },
       { label: "10 projects", included: true },
@@ -35,7 +35,7 @@ const PLANS: Plan[] = [
     blurb: "For growing IT companies that bill clients.",
     monthly: 98.99,
     highlight: true,
-    cta: { label: "Get Started", href: "/subscribe?plan=Professional" },
+    cta: { label: "Get Started", href: "/company-register?plan=professional" },
     features: [
       { label: "Up to 25 users", included: true },
       { label: "Unlimited projects", included: true },

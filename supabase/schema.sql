@@ -754,3 +754,120 @@ create policy "salaries_admin_all" on public.salaries
 drop policy if exists "salaries_expert_select" on public.salaries;
 create policy "salaries_expert_select" on public.salaries
   for select using (expert_id = auth.uid() or public.is_admin());
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SaaS multi-tenant platform (separate from the agency portals above)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+create table if not exists public.companies (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  slug       text unique,
+  owner_id   uuid not null references auth.users(id) on delete cascade,
+  plan       text not null default 'starter' check (plan in ('starter','professional','enterprise')),
+  status     text not null default 'trialing'
+             check (status in ('trialing','active','suspended','cancelled','pending')),
+  created_at timestamptz not null default now()
+);
+alter table public.companies enable row level security;
+
+create table if not exists public.company_members (
+  company_id uuid not null references public.companies(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  role       text not null default 'member' check (role in ('owner','admin','member')),
+  name       text,
+  email      text,
+  created_at timestamptz not null default now(),
+  primary key (company_id, user_id)
+);
+alter table public.company_members enable row level security;
+
+-- Tenant helpers (SECURITY DEFINER → no RLS recursion).
+create or replace function public.is_company_member(p_company uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.company_members
+                 where company_id = p_company and user_id = auth.uid());
+$$;
+
+create or replace function public.current_company_id()
+returns uuid language sql stable security definer set search_path = public as $$
+  select company_id from public.company_members
+   where user_id = auth.uid() order by created_at limit 1;
+$$;
+
+-- companies RLS
+drop policy if exists "companies_select" on public.companies;
+create policy "companies_select" on public.companies
+  for select using (owner_id = auth.uid() or public.is_company_member(id) or public.is_admin());
+drop policy if exists "companies_insert" on public.companies;
+create policy "companies_insert" on public.companies
+  for insert with check (owner_id = auth.uid());
+drop policy if exists "companies_update" on public.companies;
+create policy "companies_update" on public.companies
+  for update using (owner_id = auth.uid() or public.is_admin());
+
+-- company_members RLS
+drop policy if exists "members_select" on public.company_members;
+create policy "members_select" on public.company_members
+  for select using (user_id = auth.uid() or public.is_company_member(company_id) or public.is_admin());
+drop policy if exists "members_insert" on public.company_members;
+create policy "members_insert" on public.company_members
+  for insert with check (user_id = auth.uid() or public.is_company_member(company_id));
+drop policy if exists "members_delete" on public.company_members;
+create policy "members_delete" on public.company_members
+  for delete using (public.is_company_member(company_id));
+
+-- Tenant data tables: every row carries company_id; RLS isolates by membership.
+create table if not exists public.saas_clients (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  name text not null, email text, company_name text, phone text,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.saas_projects (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  client_id uuid references public.saas_clients(id) on delete set null,
+  name text not null, description text,
+  status text not null default 'active' check (status in ('active','on_hold','completed','cancelled')),
+  deadline date, budget numeric, currency text,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.saas_tasks (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  project_id uuid references public.saas_projects(id) on delete cascade,
+  title text not null, description text, assignee_id uuid,
+  status text not null default 'todo' check (status in ('todo','in_progress','done')),
+  deadline date, created_at timestamptz not null default now()
+);
+create table if not exists public.saas_invoices (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  client_id uuid references public.saas_clients(id) on delete set null,
+  number text, amount numeric not null, currency text,
+  status text not null default 'unpaid' check (status in ('unpaid','paid','void')),
+  due_date date, created_at timestamptz not null default now()
+);
+create table if not exists public.saas_tickets (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  client_id uuid references public.saas_clients(id) on delete set null,
+  subject text not null, body text,
+  status text not null default 'open' check (status in ('open','pending','closed')),
+  priority text not null default 'normal' check (priority in ('low','normal','high','urgent')),
+  created_at timestamptz not null default now()
+);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['saas_clients','saas_projects','saas_tasks','saas_invoices','saas_tickets'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists "%s_tenant" on public.%I', t, t);
+    execute format(
+      'create policy "%s_tenant" on public.%I for all using (public.is_company_member(company_id)) with check (public.is_company_member(company_id))',
+      t, t);
+    execute format('create index if not exists %s_company_idx on public.%I(company_id)', t, t);
+  end loop;
+end $$;
