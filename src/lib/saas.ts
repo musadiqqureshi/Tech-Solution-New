@@ -174,3 +174,33 @@ export async function listMembers(companyId: string): Promise<CompanyMember[]> {
   if (error) throw error;
   return (data ?? []).map((r) => camel<CompanyMember>(r));
 }
+
+// ── Super-admin (Tech Solutions platform) ─────────────────────────────────
+export async function listAllCompanies(): Promise<Company[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.from("companies").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToCompany);
+}
+
+export async function adminUpdateCompany(
+  id: string,
+  fields: { plan?: CompanyPlan; status?: CompanyStatus }
+): Promise<Company> {
+  const { data, error } = await supabase.from("companies").update(fields).eq("id", id).select().single();
+  if (error) throw error;
+  return rowToCompany(data);
+}
+
+/** All company_members across the platform (admin only) — for seat analytics. */
+export async function listAllMembers(): Promise<CompanyMember[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.from("company_members").select("*");
+  if (error) throw error;
+  return (data ?? []).map((r) => camel<CompanyMember>(r));
+}
+
+export async function deleteCompany(id: string): Promise<void> {
+  const { error } = await supabase.from("companies").delete().eq("id", id);
+  if (error) throw error;
+}

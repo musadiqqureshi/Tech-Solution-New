@@ -805,6 +805,9 @@ create policy "companies_insert" on public.companies
 drop policy if exists "companies_update" on public.companies;
 create policy "companies_update" on public.companies
   for update using (owner_id = auth.uid() or public.is_admin());
+drop policy if exists "companies_delete" on public.companies;
+create policy "companies_delete" on public.companies
+  for delete using (owner_id = auth.uid() or public.is_admin());
 
 -- company_members RLS
 drop policy if exists "members_select" on public.company_members;
