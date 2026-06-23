@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { siteSystemPrompt } from "@/lib/aiKnowledge";
 
+export const runtime = "nodejs";
+export const maxDuration = 60; // reasoning models can be slow; avoid Vercel cutoff
+
 const BASE = process.env.AI_BASE_URL || "https://openrouter.ai/api/v1";
 const KEY = process.env.AI_API_KEY || "";
 const PRIMARY = process.env.AI_MODEL || "cohere/north-mini-code:free";
