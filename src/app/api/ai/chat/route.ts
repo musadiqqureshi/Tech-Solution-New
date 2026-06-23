@@ -3,13 +3,13 @@ import { siteSystemPrompt } from "@/lib/aiKnowledge";
 
 const BASE = process.env.AI_BASE_URL || "https://openrouter.ai/api/v1";
 const KEY = process.env.AI_API_KEY || "";
-const PRIMARY = process.env.AI_MODEL || "qwen/qwen3-next-80b-a3b-instruct:free";
+const PRIMARY = process.env.AI_MODEL || "cohere/north-mini-code:free";
 const FALLBACKS = Array.from(new Set([
   PRIMARY,
+  "cohere/north-mini-code:free",
   "qwen/qwen3-next-80b-a3b-instruct:free",
   "meta-llama/llama-3.3-70b-instruct:free",
   "nousresearch/hermes-3-llama-3.1-405b:free",
-  "qwen/qwen3-coder:free",
 ]));
 
 interface Msg { role: "user" | "assistant"; content: string }
@@ -31,7 +31,8 @@ export async function POST(req: Request) {
   const payloadBase = {
     messages: [{ role: "system", content: siteSystemPrompt() }, ...messages],
     temperature: 0.4,
-    max_tokens: 600,
+    max_tokens: 3000, // reasoning models spend tokens thinking before content
+    reasoning: { effort: "low" }, // keep replies fast (ignored by non-reasoning models)
   };
 
   for (const model of FALLBACKS) {
