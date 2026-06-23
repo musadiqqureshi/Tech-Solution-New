@@ -60,12 +60,23 @@ body {
   }
 
   .glass-card-hover {
-    @apply transition-transform duration-200;
+    @apply transition-all duration-300;
   }
   .glass-card-hover:hover {
-    border-color: rgba(124, 58, 237, 0.4);
-    box-shadow: 0 8px 50px rgba(124, 58, 237, 0.18);
-    transform: translateY(-4px);
+    border-color: rgba(124, 58, 237, 0.55);
+    box-shadow: 0 18px 60px rgba(124, 58, 237, 0.30), 0 0 0 1px rgba(124, 58, 237, 0.18);
+    transform: translateY(-6px);
+  }
+
+  /* Faint grid texture + alternating tint for section depth */
+  .section-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  .section-alt {
+    background-color: rgba(255, 255, 255, 0.015);
   }
 
   .stat-card {
