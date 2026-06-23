@@ -12,6 +12,7 @@ import Leadership from "@/components/home/Leadership";
 import Experts from "@/components/home/Experts";
 import Contact from "@/components/home/Contact";
 import LeadChatbot from "@/components/LeadChatbot";
+import TechSolutionsAI from "@/components/TechSolutionsAI";
 
 export default function Home() {
   const [chatOpen, setChatOpen] = useState(false);
@@ -31,6 +32,7 @@ export default function Home() {
       </main>
       <Footer />
       <LeadChatbot open={chatOpen} setOpen={setChatOpen} />
+      <TechSolutionsAI align="left" />
     </>
   );
 }

@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getMyCompany, PLAN_LABEL, type Company } from "@/lib/saas";
 import { SAAS_NAV } from "@/lib/saasNav";
 import ThemeToggle from "@/components/ThemeToggle";
+import TechSolutionsAI from "@/components/TechSolutionsAI";
 
 const CompanyContext = createContext<Company | null>(null);
 export const useCompany = () => useContext(CompanyContext);
@@ -119,6 +120,7 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 min-w-0 px-4 sm:px-8 pt-20 lg:pt-8 pb-12 max-w-6xl mx-auto w-full">
           {children}
         </main>
+        <TechSolutionsAI />
       </div>
     </CompanyContext.Provider>
   );

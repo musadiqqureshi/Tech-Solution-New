@@ -41,7 +41,7 @@ function deriveRole(email: string, profileRole?: string): UserRole {
   ) {
     return "admin";
   }
-  if (profileRole === "expert" || profileRole === "admin") return profileRole;
+  if (profileRole === "expert" || profileRole === "admin" || profileRole === "intern") return profileRole;
   return "client";
 }
 

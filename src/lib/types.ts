@@ -1,4 +1,4 @@
-export type UserRole = "client" | "expert" | "admin";
+export type UserRole = "client" | "expert" | "admin" | "intern";
 
 export interface Profile {
   $id?: string;

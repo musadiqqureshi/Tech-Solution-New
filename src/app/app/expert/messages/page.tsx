@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/app/ui";
 import ChatThread from "@/components/app/ChatThread";
 
 export default function ExpertMessages() {
-  useRequireRole(["expert", "admin"]);
+  useRequireRole(["expert", "admin", "intern"]);
   const { user } = useAuth();
 
   return (

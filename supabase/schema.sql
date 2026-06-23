@@ -874,3 +874,32 @@ begin
     execute format('create index if not exists %s_company_idx on public.%I(company_id)', t, t);
   end loop;
 end $$;
+
+-- ── Internship program ────────────────────────────────────────────────────
+-- Allow an 'intern' role on profiles.
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check
+  check (role in ('client','expert','admin','intern'));
+
+create table if not exists public.internship_applications (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  email      text not null,
+  phone      text,
+  area       text not null,
+  experience text,
+  message    text,
+  status     text not null default 'new' check (status in ('new','reviewing','accepted','rejected')),
+  created_at timestamptz not null default now()
+);
+alter table public.internship_applications enable row level security;
+
+drop policy if exists "intern_apps_public_insert" on public.internship_applications;
+create policy "intern_apps_public_insert" on public.internship_applications
+  for insert with check (true);
+drop policy if exists "intern_apps_admin_read" on public.internship_applications;
+create policy "intern_apps_admin_read" on public.internship_applications
+  for select using (public.is_admin());
+drop policy if exists "intern_apps_admin_write" on public.internship_applications;
+create policy "intern_apps_admin_write" on public.internship_applications
+  for all using (public.is_admin()) with check (public.is_admin());

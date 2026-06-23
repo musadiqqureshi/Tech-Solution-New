@@ -22,7 +22,7 @@ const ACTION: Record<string, { label: string; icon: typeof Play }> = {
 };
 
 export default function ExpertTaskDetail() {
-  useRequireRole(["expert", "admin"]);
+  useRequireRole(["expert", "admin", "intern"]);
   const { user } = useAuth();
   const params = useParams<{ id: string }>();
   const [t, setT] = useState<Task | null>(null);

@@ -12,7 +12,7 @@ import { formatMoney } from "@/lib/orders";
 import type { Task, TaskStatus } from "@/lib/types";
 
 export default function ExpertAnalytics() {
-  useRequireRole(["expert", "admin"]);
+  useRequireRole(["expert", "admin", "intern"]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
