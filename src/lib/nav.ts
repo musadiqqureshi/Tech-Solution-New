@@ -9,7 +9,6 @@ import {
   Users,
   Wallet,
   MessageSquare,
-  Sparkles,
   GraduationCap,
   type LucideIcon,
 } from "lucide-react";
@@ -62,6 +61,5 @@ export const NAV: Record<UserRole, NavItem[]> = {
     { label: "Tasks", href: "/app/admin/tasks", icon: ListTodo },
     { label: "Invoices", href: "/app/admin/invoices", icon: Wallet },
     { label: "Reports", href: "/app/admin/reports", icon: BarChart3 },
-    { label: "Aura AI", href: "/app/admin/aura", icon: Sparkles },
   ],
 };

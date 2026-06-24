@@ -20,6 +20,13 @@ export default function TechSolutionsAI({ align = "right" }: { align?: "left" | 
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, open]);
 
+  // Allow any "Book Consultation"/"Get connected" CTA to open the widget.
+  useEffect(() => {
+    const openIt = () => setOpen(true);
+    window.addEventListener("open-ts-ai", openIt);
+    return () => window.removeEventListener("open-ts-ai", openIt);
+  }, []);
+
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     const body = text.trim();
@@ -46,14 +53,22 @@ export default function TechSolutionsAI({ align = "right" }: { align?: "left" | 
   return (
     <>
       {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className={`fixed bottom-6 ${side} z-40 flex items-center gap-2 pl-3 pr-4 py-3 rounded-full text-white font-semibold shadow-2xl`}
-          style={{ background: "linear-gradient(120deg,#7c3aed,#2563eb 60%,#06b6d4)" }}
-          aria-label="Open Tech Solutions AI"
-        >
-          <Bot size={20} /> <span className="hidden sm:inline text-sm">Tech Solutions AI</span>
-        </button>
+        <div className={`fixed bottom-6 ${side} z-40 flex flex-col items-end gap-2`}>
+          {/* Floating note — fades in/out and drifts to nudge visitors to chat */}
+          <div className="ts-ai-note select-none rounded-2xl px-3.5 py-2 text-xs font-semibold text-white shadow-xl"
+            style={{ background: "linear-gradient(120deg,#7c3aed,#06b6d4)" }}>
+            Got a query? Get connected 👋
+            <span className="ts-ai-note-tail" />
+          </div>
+          <button
+            onClick={() => setOpen(true)}
+            className="flex items-center gap-2 pl-3 pr-4 py-3 rounded-full text-white font-semibold shadow-2xl"
+            style={{ background: "linear-gradient(120deg,#7c3aed,#2563eb 60%,#06b6d4)" }}
+            aria-label="Open Tech Solutions AI"
+          >
+            <Bot size={20} /> <span className="hidden sm:inline text-sm">Tech Solutions AI</span>
+          </button>
+        </div>
       )}
 
       {open && (

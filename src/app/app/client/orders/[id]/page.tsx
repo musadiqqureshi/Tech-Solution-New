@@ -14,6 +14,7 @@ import { getMyOrderReview, submitReview } from "@/lib/reviews";
 import { listOrderInvoices } from "@/lib/invoices";
 import { InvoiceBadge } from "@/components/app/InvoiceDocument";
 import Attachments from "@/components/app/Attachments";
+import ProposalsPanel from "@/components/app/ProposalsPanel";
 import type { Order, Review, Invoice } from "@/lib/types";
 
 export default function OrderDetail() {
@@ -121,6 +122,11 @@ export default function OrderDetail() {
       <div className="grid md:grid-cols-3 gap-5">
         {/* Details */}
         <div className="md:col-span-2 space-y-5">
+          {/* Proposal & negotiation */}
+          {user && (
+            <ProposalsPanel order={order} role="client" userId={user.id} userName={user.name} onOrderUpdate={setOrder} />
+          )}
+
           <div className="glass-card p-6">
             <h3 className="text-sm font-bold text-white mb-3">Description</h3>
             <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{order.description}</p>

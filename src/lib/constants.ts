@@ -17,6 +17,22 @@ export const COMPANY = {
   location: "Lahore, Punjab, Pakistan",
 };
 
+// Bank account for SaaS subscription & invoice payments (manual transfer + proof upload).
+export const BANK = {
+  bankName: "Meezan Bank",
+  accountTitle: "Tech Solutions Pakistan",
+  accountNumber: "0123 4567 8901 2345",
+  iban: "PK00 MEZN 0001 2345 6789 0123",
+  branch: "Lahore, Punjab",
+};
+
+// SaaS plan prices (USD). Single source of truth for billing.
+export const PLAN_PRICING: Record<"starter" | "professional" | "enterprise", number | null> = {
+  starter: 14.99,
+  professional: 98.99,
+  enterprise: null, // custom / contact sales
+};
+
 export const CEO = {
   name: "Muhammad Mussaddiq Ahmed Qureshi",
   title: "Founder & CEO",
@@ -253,5 +269,4 @@ export const NAV_LINKS = [
   { label: "Pricing", href: "/pricing" },
   { label: "Internship", href: "/internship" },
   { label: "Team", href: "/#team" },
-  { label: "Contact", href: "/#contact" },
 ];

@@ -52,12 +52,13 @@ export default function CompanySettings() {
         </button>
       </div>
 
-      <div className="glass-card p-6 max-w-2xl mt-5 border border-amber-500/30">
+      <div className="glass-card p-6 max-w-2xl mt-5 border border-aura-purple/30">
         <h3 className="text-sm font-bold text-white mb-1">Billing</h3>
-        <p className="text-sm text-gray-400">
-          Your workspace is on a free trial. Stripe checkout & plan upgrades are activating soon —
-          you won’t be charged until billing goes live.
+        <p className="text-sm text-gray-400 mb-3">
+          Generate a PKR invoice for your plan at the live USD rate, pay by bank transfer, and
+          upload your payment screenshot to activate.
         </p>
+        <a href="/dashboard/billing" className="btn-primary !py-2 text-sm">Go to Billing</a>
       </div>
     </>
   );

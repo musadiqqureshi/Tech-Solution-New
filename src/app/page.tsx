@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Hero from "@/components/home/Hero";
@@ -11,18 +12,18 @@ import Testimonials from "@/components/home/Testimonials";
 import Leadership from "@/components/home/Leadership";
 import Experts from "@/components/home/Experts";
 import Faq from "@/components/home/Faq";
-import Contact from "@/components/home/Contact";
 import TechSolutionsAI from "@/components/TechSolutionsAI";
 
 export default function Home() {
-  const goContact = () =>
-    document.querySelector("#contact")?.scrollIntoView({ behavior: "smooth" });
+  const router = useRouter();
+  // Starting a project sends the visitor straight to sign up.
+  const goRegister = () => router.push("/register");
 
   return (
     <>
       <Navbar />
       <main>
-        <Hero onStartProject={goContact} />
+        <Hero onStartProject={goRegister} />
         <Partners />
         <Services />
         <div className="section-alt"><HowItWorks /></div>
@@ -31,7 +32,6 @@ export default function Home() {
         <Leadership />
         <div className="section-alt"><Experts /></div>
         <Faq />
-        <Contact />
       </main>
       <Footer />
       <TechSolutionsAI />

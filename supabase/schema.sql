@@ -903,3 +903,84 @@ create policy "intern_apps_admin_read" on public.internship_applications
 drop policy if exists "intern_apps_admin_write" on public.internship_applications;
 create policy "intern_apps_admin_write" on public.internship_applications
   for all using (public.is_admin()) with check (public.is_admin());
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SaaS subscription billing — invoice per plan purchase, priced in PKR.
+-- (USD plan price × live USD→PKR rate, captured at issue time.)
+-- ═══════════════════════════════════════════════════════════════════════════
+create table if not exists public.plan_invoices (
+  id            uuid primary key default gen_random_uuid(),
+  company_id    uuid not null references public.companies(id) on delete cascade,
+  number        text not null,
+  plan          text not null check (plan in ('starter','professional','enterprise')),
+  billing_cycle text not null default 'monthly' check (billing_cycle in ('monthly','yearly')),
+  amount_usd    numeric not null,
+  fx_rate       numeric not null,            -- USD→PKR at issue time
+  amount_pkr    numeric not null,            -- amount_usd × fx_rate
+  status        text not null default 'unpaid'
+                check (status in ('unpaid','submitted','paid','void')),
+  payment_proof_url   text,
+  payment_submitted_at timestamptz,
+  paid_at       timestamptz,
+  created_at    timestamptz not null default now()
+);
+alter table public.plan_invoices enable row level security;
+create index if not exists plan_invoices_company_idx on public.plan_invoices(company_id);
+
+-- Company members read & create their own plan invoices; super-admin sees all.
+drop policy if exists "plan_invoices_select" on public.plan_invoices;
+create policy "plan_invoices_select" on public.plan_invoices
+  for select using (public.is_company_member(company_id) or public.is_admin());
+drop policy if exists "plan_invoices_insert" on public.plan_invoices;
+create policy "plan_invoices_insert" on public.plan_invoices
+  for insert with check (public.is_company_member(company_id));
+drop policy if exists "plan_invoices_update" on public.plan_invoices;
+create policy "plan_invoices_update" on public.plan_invoices
+  for update using (public.is_company_member(company_id) or public.is_admin())
+  with check (public.is_company_member(company_id) or public.is_admin());
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Agency proposals & negotiation — a project (order) starts only after the
+-- client approves a proposal. Team and client can negotiate price + deadline.
+-- ═══════════════════════════════════════════════════════════════════════════
+create table if not exists public.proposals (
+  id            uuid primary key default gen_random_uuid(),
+  order_id      uuid not null references public.orders(id) on delete cascade,
+  author_id     uuid not null references auth.users(id) on delete cascade,
+  author_name   text,
+  scope         text not null,
+  price         numeric not null,
+  currency      text not null default 'USD'
+                check (currency in ('USD','PKR','GBP','EUR','AUD','CAD')),
+  deadline      date,
+  -- submitted: team proposed → countered: client proposed new terms →
+  -- approved: client accepted (project officially starts) → rejected.
+  status        text not null default 'submitted'
+                check (status in ('submitted','countered','approved','rejected')),
+  client_price    numeric,        -- client's counter offer
+  client_deadline date,           -- client's counter deadline
+  client_note     text,
+  revision_note   text,           -- client-requested revision to the team
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+alter table public.proposals enable row level security;
+create index if not exists proposals_order_idx on public.proposals(order_id);
+
+-- Helper: is the caller the client who owns this order?
+create or replace function public.owns_order(p_order uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.orders where id = p_order and client_id = auth.uid());
+$$;
+
+-- The order's client and any admin can read/write proposals on that order.
+drop policy if exists "proposals_select" on public.proposals;
+create policy "proposals_select" on public.proposals
+  for select using (public.owns_order(order_id) or public.is_admin());
+drop policy if exists "proposals_insert" on public.proposals;
+create policy "proposals_insert" on public.proposals
+  for insert with check (public.is_admin() or (author_id = auth.uid() and public.owns_order(order_id)));
+drop policy if exists "proposals_update" on public.proposals;
+create policy "proposals_update" on public.proposals
+  for update using (public.owns_order(order_id) or public.is_admin())
+  with check (public.owns_order(order_id) or public.is_admin());

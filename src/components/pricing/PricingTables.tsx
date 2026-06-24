@@ -51,7 +51,7 @@ const PLANS: Plan[] = [
     name: "Enterprise",
     blurb: "For agencies and software houses.",
     monthly: null,
-    cta: { label: "Contact Sales", href: "/#contact" },
+    cta: { label: "Contact Sales", href: "/register" },
     features: [
       { label: "Unlimited users", included: true },
       { label: "White-label dashboard", included: true },

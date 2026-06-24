@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Shield, Building2, LayoutDashboard, Tag, LogOut, Menu, X, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import ThemeToggle from "@/components/ThemeToggle";
 
 const NAV = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
@@ -63,7 +62,6 @@ export default function SuperAdminShell({ children }: { children: React.ReactNod
         {Brand}
         <button onClick={() => setOpen(true)} className="text-white p-2"><Menu size={22} /></button>
       </div>
-      <ThemeToggle className="fixed top-2.5 right-4 lg:top-4 lg:right-4 z-50 glass-card" />
       <div className="min-h-screen bg-aura-mesh flex">
         <aside className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 p-5 border-r border-white/10 bg-[#080816]">
           {Brand}<div className="mt-8 flex-1">{Nav}</div>{Footer}

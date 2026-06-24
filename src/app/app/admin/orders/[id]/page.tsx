@@ -9,11 +9,13 @@ import {
 } from "lucide-react";
 import { externalUrl } from "@/lib/url";
 import { useRequireRole } from "@/components/app/PortalGuard";
+import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/app/ui";
 import { StatusBadge, StatusTimeline } from "@/components/app/OrderBits";
 import { getOrder, updateOrder, setOrderDelivery, deleteOrder, nextStatus, formatMoney } from "@/lib/orders";
 import { generatePhaseInvoice } from "@/lib/invoices";
 import Attachments from "@/components/app/Attachments";
+import ProposalsPanel from "@/components/app/ProposalsPanel";
 import type { Order, OrderStatus } from "@/lib/types";
 
 const ADVANCE_LABEL: Partial<Record<OrderStatus, { label: string; icon: typeof Play }>> = {
@@ -25,6 +27,7 @@ const ADVANCE_LABEL: Partial<Record<OrderStatus, { label: string; icon: typeof P
 
 export default function AdminOrderDetail() {
   useRequireRole(["admin"]);
+  const { user } = useAuth();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
@@ -159,6 +162,13 @@ export default function AdminOrderDetail() {
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-5">Progress</h3>
         <StatusTimeline status={order.status} />
       </div>
+
+      {/* Proposal & negotiation */}
+      {user && (
+        <div className="mb-5">
+          <ProposalsPanel order={order} role="admin" userId={user.id} userName={user.name} onOrderUpdate={setOrder} />
+        </div>
+      )}
 
       {/* Final delivery (visible to the client) */}
       <div className="glass-card p-6 mb-5">

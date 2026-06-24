@@ -43,7 +43,7 @@ function SubscribeInner() {
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link href="/#contact" className="btn-primary">
+          <Link href="/register" className="btn-primary">
             <Bell size={18} /> Notify me at launch
           </Link>
           <Link href="/pricing" className="btn-secondary">

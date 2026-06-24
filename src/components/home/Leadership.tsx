@@ -68,7 +68,7 @@ export default function Leadership() {
                   <Linkedin size={18} className="text-aura-cyan" />
                 </a>
                 <a
-                  href="#contact"
+                  href="/register"
                   className="w-10 h-10 rounded-xl grid place-items-center glass-card glass-card-hover"
                   aria-label="Email"
                 >

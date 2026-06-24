@@ -17,8 +17,8 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
     return () => clearInterval(t);
   }, []);
 
-  const scrollTo = (href: string) =>
-    document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
+  // Opens the Tech Solutions AI widget — the only way to reach the team.
+  const openAI = () => window.dispatchEvent(new Event("open-ts-ai"));
 
   return (
     <section
@@ -27,6 +27,16 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
     >
       <div className="orb w-96 h-96 top-1/4 -left-10 bg-aura-purple" style={{ filter: "blur(90px)", opacity: 0.16 }} />
       <div className="orb w-80 h-80 bottom-0 right-0 bg-aura-cyan" style={{ filter: "blur(80px)", opacity: 0.12 }} />
+
+      {/* Moving background particles */}
+      <div className="ts-particles" aria-hidden="true">
+        {Array.from({ length: 18 }).map((_, i) => (
+          <span key={i} className={`ts-particle ts-particle-${(i % 6) + 1}`} />
+        ))}
+      </div>
+
+      {/* Moving gradient band beneath the hero */}
+      <div className="ts-hero-gradient animate-gradient-x" aria-hidden="true" />
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center">
         {/* Left: copy */}
@@ -84,7 +94,7 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
             <button onClick={onStartProject} className="btn-primary">
               <ArrowRight size={18} /> Start Project
             </button>
-            <button onClick={() => scrollTo("#contact")} className="btn-secondary">
+            <button onClick={openAI} className="btn-secondary">
               <Calendar size={18} /> Book Consultation
             </button>
           </motion.div>

@@ -7,8 +7,6 @@ import { Sparkles, LogOut, Menu, X, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getMyCompany, PLAN_LABEL, type Company } from "@/lib/saas";
 import { SAAS_NAV } from "@/lib/saasNav";
-import ThemeToggle from "@/components/ThemeToggle";
-import TechSolutionsAI from "@/components/TechSolutionsAI";
 
 const CompanyContext = createContext<Company | null>(null);
 export const useCompany = () => useContext(CompanyContext);
@@ -97,7 +95,6 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
         {Brand}
         <button onClick={() => setOpen(true)} className="text-white p-2" aria-label="Open menu"><Menu size={22} /></button>
       </div>
-      <ThemeToggle className="fixed top-2.5 right-4 lg:top-4 lg:right-4 z-50 glass-card" />
 
       <div className="min-h-screen bg-aura-mesh flex">
         <aside className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 p-5 border-r border-white/10 bg-[#080816]">
@@ -120,7 +117,6 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 min-w-0 px-4 sm:px-8 pt-20 lg:pt-8 pb-12 max-w-6xl mx-auto w-full">
           {children}
         </main>
-        <TechSolutionsAI />
       </div>
     </CompanyContext.Provider>
   );

@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, FolderKanban, ListChecks, UsersRound,
-  FileText, LifeBuoy, Settings, type LucideIcon,
+  FileText, LifeBuoy, Settings, CreditCard, type LucideIcon,
 } from "lucide-react";
 
 export interface SaasNavItem {
@@ -17,5 +17,6 @@ export const SAAS_NAV: SaasNavItem[] = [
   { label: "Team", href: "/dashboard/team", icon: UsersRound },
   { label: "Invoices", href: "/dashboard/invoices", icon: FileText },
   { label: "Tickets", href: "/dashboard/tickets", icon: LifeBuoy },
+  { label: "Billing", href: "/dashboard/billing", icon: CreditCard },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
