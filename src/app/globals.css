@@ -150,6 +150,17 @@ body {
   animation-play-state: paused;
 }
 
+/* Moving gradient (pans horizontally) */
+@keyframes ts-gradient-x {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: ts-gradient-x 6s ease infinite;
+}
+
 /* ── Print: isolate the invoice document (Download = Save as PDF) ──────── */
 @media print {
   body * {
