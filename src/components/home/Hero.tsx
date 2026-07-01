@@ -35,8 +35,8 @@ export default function Hero({ onStartProject }: { onStartProject: () => void })
         ))}
       </div>
 
-      {/* Moving gradient band beneath the hero */}
-      <div className="ts-hero-gradient animate-gradient-x" aria-hidden="true" />
+      {/* Soft moving glow beneath the hero */}
+      <div className="ts-hero-gradient" aria-hidden="true" />
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center">
         {/* Left: copy */}

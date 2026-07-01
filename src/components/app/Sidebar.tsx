@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Sparkles, LogOut, Menu, X } from "lucide-react";
+import { Sparkles, LogOut, Menu, X, Bot } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationsContext";
 import { NAV } from "@/lib/nav";
@@ -54,6 +54,20 @@ function NavList({ role, onNavigate }: { role: UserRole; onNavigate?: () => void
           </Link>
         );
       })}
+
+      {/* Open the floating Tech Solutions AI chat from the nav (team portals). */}
+      {(role === "admin" || role === "expert" || role === "intern") && (
+        <button
+          onClick={() => {
+            window.dispatchEvent(new Event("open-ts-ai"));
+            onNavigate?.();
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+        >
+          <Bot size={18} />
+          <span className="flex-1 text-left">Tech Solutions AI</span>
+        </button>
+      )}
     </nav>
   );
 }

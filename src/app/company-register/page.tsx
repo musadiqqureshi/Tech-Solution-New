@@ -43,7 +43,8 @@ function RegisterForm() {
       }
       if (!userId) throw new Error("Could not create your account.");
       await registerCompany({ name: f.company.trim(), plan: f.plan, userId, userName: f.name.trim(), userEmail: f.email.trim() });
-      router.push("/dashboard");
+      // No trial — send the new workspace straight to invoicing for the chosen plan.
+      router.push("/dashboard/billing");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed.");
       setLoading(false);
@@ -72,7 +73,7 @@ function RegisterForm() {
         Already have a workspace?{" "}
         <Link href="/company-login" className="text-aura-cyan hover:underline">Company login</Link>
       </p>
-      <p className="text-center text-[11px] text-gray-500">14-day free trial · no card required · billing activates soon</p>
+      <p className="text-center text-[11px] text-gray-500">Pick a plan, get your invoice in PKR, and activate by bank transfer.</p>
     </form>
   );
 }

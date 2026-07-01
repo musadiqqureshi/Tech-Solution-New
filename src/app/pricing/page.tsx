@@ -9,20 +9,20 @@ const url = `https://${COMPANY.domain}/pricing`;
 export const metadata: Metadata = {
   title: "Pricing — SaaS Plans for IT Companies",
   description:
-    "Simple monthly and yearly pricing for the Tech Solutions SaaS platform. Manage clients, projects, tasks, teams, invoices, files, and support tickets. Starter, Professional, and Enterprise plans with a 14-day free trial.",
+    "Simple monthly and yearly pricing for the Tech Solutions SaaS platform. Manage clients, projects, tasks, teams, invoices, files, and support tickets. Starter, Professional, and Enterprise plans, billed in PKR by bank transfer.",
   alternates: { canonical: url },
   openGraph: {
     url,
     title: "Pricing — Tech Solutions SaaS Platform",
     description:
-      "Monthly & yearly plans for IT companies: clients, projects, tasks, teams, invoices, and support tickets. Start free.",
+      "Monthly & yearly plans for IT companies: clients, projects, tasks, teams, invoices, and support tickets. Billed in PKR by bank transfer.",
   },
 };
 
 const FAQS = [
   {
-    q: "Is there a free trial?",
-    a: "Yes — every plan includes a 14-day free trial. No credit card is required to get started.",
+    q: "How does billing work?",
+    a: "Pick a plan and we generate an invoice in PKR at the live USD rate. Pay by bank transfer and upload your payment screenshot — your workspace activates once we verify it.",
   },
   {
     q: "Can I switch plans later?",

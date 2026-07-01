@@ -7,7 +7,7 @@ const FAQS = [
   { q: "What services does Tech Solutions offer?", a: "Enterprise software development, web & mobile apps, big data engineering, AI automation, AI agents & chatbots, and content & research writing — end to end, from idea to production." },
   { q: "How do projects get started?", a: "Register and place an order describing your project (with requirement files and a deadline). After we review and approve it, you pay a 30% advance and we begin — the remaining 70% is due on final delivery." },
   { q: "How do I track my project and get deliverables?", a: "Your client portal shows live status, lets you download deliverables, request follow-ups or revisions, chat with the team, book meetings, and download invoices." },
-  { q: "Do you offer a SaaS platform for IT companies?", a: "Yes. IT companies get their own private workspace to manage clients, projects, tasks, teams, invoices and tickets. Plans start at $14.99/user-month with a 14-day free trial — see the Pricing page." },
+  { q: "Do you offer a SaaS platform for IT companies?", a: "Yes. IT companies get their own private workspace to manage clients, projects, tasks, teams, invoices and tickets. Plans start at $14.99/user-month, billed in PKR by bank transfer — see the Pricing page." },
   { q: "Do you run internships?", a: "Yes — a structured internship program with real projects and senior mentorship, and a path to becoming a paid expert. Apply on the Internship page." },
   { q: "Which industries have you worked in?", a: "400+ projects across 12+ industries including Healthcare, Aviation, Finance, Hospitality, and Logistics." },
 ];

@@ -25,7 +25,8 @@ chat with the team, book meetings, download invoices, and leave a review.
 SAAS PLATFORM (for IT companies)
 We also offer a SaaS platform where IT companies get their own private workspace to manage
 clients, projects, tasks, teams, invoices and support tickets. Plans: Starter ($14.99/user-mo),
-Professional ($98.99/user-mo), and Enterprise (custom, white-label). 14-day free trial.
+Professional ($98.99/user-mo), and Enterprise (custom, white-label). No free trial — on
+sign-up we issue an invoice in PKR (live USD rate) that you pay by bank transfer and activate.
 Companies sign up at /company-register; pricing is at /pricing.
 
 INTERNSHIPS

@@ -147,7 +147,7 @@ export default function PricingTables() {
       </div>
 
       <p className="text-center text-sm text-gray-500 mt-10">
-        All plans include a 14-day free trial. No credit card required to start. Prices in USD.
+        Choose a plan to get your invoice in PKR (at the live USD rate) and activate by bank transfer. Prices shown in USD.
       </p>
     </div>
   );

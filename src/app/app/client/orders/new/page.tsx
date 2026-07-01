@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Send, UploadCloud, FileText, X } from "lucide-react";
@@ -34,6 +34,14 @@ export default function NewOrder() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+
+  // Prefill the service when arriving from a service page (?service=…).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("service");
+    if (!q) return;
+    const match = SERVICES.find((s) => s.title.toLowerCase() === q.toLowerCase());
+    setForm((f) => ({ ...f, service: match ? match.title : "Custom Project" }));
+  }, []);
 
   const set = (k: keyof typeof form) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -80,7 +88,7 @@ export default function NewOrder() {
       <Link href="/app/client/orders" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white mb-4">
         <ArrowLeft size={16} /> Back to orders
       </Link>
-      <PageHeader title="New Order" subtitle="Tell us about your project" />
+      <PageHeader title="Place a Custom Order" subtitle="Order any project — pick a service or choose Custom / Other" />
 
       <form onSubmit={submit} className="glass-card p-6 sm:p-8 space-y-5 max-w-2xl">
         <label className="block">
@@ -91,6 +99,7 @@ export default function NewOrder() {
                 {s.title}
               </option>
             ))}
+            <option value="Custom Project" className="bg-aura-card">Custom / Other</option>
           </select>
         </label>
 

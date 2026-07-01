@@ -61,7 +61,8 @@ export async function registerCompany(input: {
       slug,
       owner_id: input.userId,
       plan: input.plan,
-      status: "trialing",
+      // No trial — the workspace stays pending until the plan invoice is paid.
+      status: "pending",
     })
     .select()
     .single();

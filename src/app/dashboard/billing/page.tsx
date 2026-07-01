@@ -29,15 +29,37 @@ export default function BillingPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
+  const autoGen = useRef(false);
   const plan = company?.plan ?? "starter";
   const usd = planUsd(plan, cycle);
   const isEnterprise = usd == null;
 
   useEffect(() => {
     if (!company?.id) return;
-    listPlanInvoices(company.id).then(setInvoices).catch(() => {}).finally(() => setLoading(false));
+    const companyId = company.id;
     fetchUsdToPkr().then(setRate).catch(() => {});
-  }, [company?.id]);
+    (async () => {
+      try {
+        const list = await listPlanInvoices(companyId);
+        // No trial: auto-issue the first invoice for the chosen plan on arrival.
+        if (list.length === 0 && planUsd(plan, "monthly") != null && !autoGen.current) {
+          autoGen.current = true;
+          try {
+            const inv = await createPlanInvoice(companyId, plan, "monthly");
+            setInvoices([inv]);
+          } catch {
+            setInvoices(list);
+          }
+        } else {
+          setInvoices(list);
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [company?.id, plan]);
 
   const generate = async () => {
     if (!company?.id || isEnterprise) return;
